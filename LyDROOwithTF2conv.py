@@ -18,6 +18,7 @@ import numpy as np                         # import numpy
 from memoryTF2conv import MemoryDNN
 # from optimization import bisection
 from ResourceAllocation import Algo1_NUM
+from system_params import d_th
 
 import math
 
@@ -63,8 +64,8 @@ if __name__ == "__main__":
             4) ‘Queueing module’ of
     '''
 
-    N =10                     # number of users
-    n = 10000                     # number of time frames
+    N = 10                # number of users
+    n = 10                     # number of time frames
     K = N                   # initialize K = N
     decoder_mode = 'OPN'    # the quantization mode could be 'OP' (Order-preserving) or 'KNN' or 'OPN' (Order-Preserving with noise)
     Memory = 1024          # capacity of memory structure
@@ -74,7 +75,7 @@ if __name__ == "__main__":
     nu = 1000 # energy queue factor;
 #    w = np.ones((N))      # weights for each user
     w = [1.5 if i%2==0 else 1 for i in range(N)]
-    V = 20
+    V = 1e8
 #    arrival_lambda =30*np.ones((N))/N # average data arrival in Mb, sum of arrival over all 'N' users is a constant
     lambda_param = 3
     arrival_lambda = lambda_param*np.ones((N)) # 3 Mbps per user
@@ -106,11 +107,19 @@ if __name__ == "__main__":
     start_time=time.time()
     mode_his = [] # store the offloading mode
     k_idx_his = [] # store the index of optimal offloading actor
-    Q = np.zeros((n,N)) # data queue in MbitsW
+    Q = np.zeros((n,N)) # local queue in tasks
+    L = np.zeros((n,N)) # UAV queue in tasks
+
     Y = np.zeros((n,N)) # virtual energy queue in mJ
     Obj = np.zeros(n) # objective values after solving problem (26)
     energy = np.zeros((n,N)) # energy consumption
     rate = np.zeros((n,N)) # achieved computation rate
+    
+    a = np.zeros((n, N)) # number of local computation tasks 
+    b = np.zeros((n, N)) # number of offloading tasks 
+    c = np.zeros((n, N))  # number of remote computation tasks
+    d_t = np.zeros((N)) # estimated delay 
+
 
     for i in range(n):
 
@@ -134,37 +143,53 @@ if __name__ == "__main__":
         h = h_tmp*CHFACT
         channel[i,:] = h
         # real-time arrival generation
-        dataA[i,:] = np.random.exponential(arrival_lambda)
+        dataA[i,:] = np.random.poisson(arrival_lambda, size=(1, N))
 
 
         # 4) ‘Queueing module’ of LyDROO
         if i_idx > 0:
             # update queues
-            Q[i_idx,:] = Q[i_idx-1,:] + dataA[i_idx-1,:] - rate[i_idx-1,:] # current data queue
+            Q[i_idx,:] = Q[i_idx-1,:] + dataA[i_idx-1,:] - a[i_idx-1,:] - b[i_idx-1,:]# current data queue
             # assert Q is positive due to float error
             Q[i_idx,Q[i_idx,:]<0] =0
-            Y[i_idx,:] = np.maximum(Y[i_idx-1,:] + (energy[i_idx-1,:]- energy_thresh)*nu,0) # current energy queue
+            L[i_idx, :] = L[i_idx-1,:] + b[i_idx-1,:] - c[i_idx-1,:] 
             # assert Y is positive due to float error
-            Y[i_idx,Y[i_idx,:]<0] =0
+            L[i_idx,L[i_idx,:]<0] =0
 
         # scale Q and Y to 1
-        nn_input =np.vstack( (h, Q[i_idx,:]/10000,Y[i_idx,:]/10000)).transpose().flatten()
+        nn_input =np.vstack( (h, Q[i_idx,:],L[i_idx,:])).transpose().flatten()
 
 
         # 1) 'Actor module' of LyDROO
         # generate a batch of actions
         m_list = mem.decode(nn_input, K, decoder_mode)
-
+ 
         r_list = [] # all results of candidate offloading modes
         v_list = [] # the objective values of candidate offloading modes
         for m in m_list:
             # 2) 'Critic module' of LyDROO
             # allocate resource for all generated offloading modes saved in m_list
-            r_list.append(Algo1_NUM(m,h,w,Q[i_idx,:],Y[i_idx,:],V))
-            v_list.append(r_list[-1][0])
+            r_list.append(Algo1_NUM(m,h,Q[i_idx,:],L[i_idx,:],V))
+            # v_list.append(r_list[-1][0])
+            f_val = r_list[-1][0]
 
+            # estimate the current value delay
+            
+            # avarage local queue 
+            Q_i_t = np.mean(Q[:i_idx, :], axis=0) if i_idx > 1 else 0 
+            # average uav queue 
+            L_i_t = np.mean(L[:i_idx, :], axis=0) if i_idx > 1 else 0
+            # average arrival rate at remote queue 
+            b_i_t = np.mean(b[:i_idx, :], axis=0) if i_idx > 1 else 1
+            
+            d_t = (Q_i_t/arrival_lambda + (1 - m)*1 + m*(1 + L_i_t/b_i_t))
+            # update the objective function
+            f_val = f_val + np.sum(1/2 * d_t**2 + 2*d_t*(L[i_idx] - d_th))
+
+            v_list.append(f_val)
+            #  
         # record the index of largest reward
-        k_idx_his.append(np.argmax(v_list))
+        k_idx_his.append(np.argmin(v_list))
 
         # 3) 'Policy update module' of LyDROO
         # encode the mode with largest reward
@@ -172,7 +197,9 @@ if __name__ == "__main__":
         mode_his.append(m_list[k_idx_his[-1]])
 
         # store max result
-        Obj[i_idx],rate[i_idx,:],energy[i_idx,:]  = r_list[k_idx_his[-1]]
+        # Obj[i_idx],rate[i_idx,:],energy[i_idx,:]  = r_list[k_idx_his[-1]]
+        Obj[i_idx] = v_list[k_idx_his[-1]]
+        tmp, a[i_idx,:],b[i_idx,:],c[i_idx,:] = r_list[k_idx_his[-1]]
 
 
     total_time=time.time()-start_time
@@ -185,3 +212,4 @@ if __name__ == "__main__":
 
     # save all data
     sio.savemat('./result_%d.mat'%N, {'input_h': channel/CHFACT,'data_arrival':dataA,'data_queue':Q,'energy_queue':Y,'off_mode':mode_his,'rate':rate,'energy_consumption':energy,'data_rate':rate,'objective':Obj})
+    print('completed!')
