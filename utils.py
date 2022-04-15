@@ -1,3 +1,5 @@
+import numpy as np 
+
 def mega(x):
   return x*1e6
 
@@ -16,3 +18,5 @@ def dBm(x):
 def dB(x): 
   return 10**(x/10)
 
+def todB(x): 
+  return 10*np.log10(x)
