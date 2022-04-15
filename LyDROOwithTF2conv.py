@@ -19,6 +19,7 @@ from memoryTF2conv import MemoryDNN
 # from optimization import bisection
 from ResourceAllocation import Algo1_NUM
 from system_params import d_th
+from ChannelModel import *
 
 import math
 
@@ -65,7 +66,8 @@ if __name__ == "__main__":
     '''
 
     N = 10                # number of users
-    n = 10                     # number of time frames
+    n = 1000
+                    # number of time frames
     K = N                   # initialize K = N
     decoder_mode = 'OPN'    # the quantization mode could be 'OP' (Order-preserving) or 'KNN' or 'OPN' (Order-Preserving with noise)
     Memory = 1024          # capacity of memory structure
@@ -75,9 +77,8 @@ if __name__ == "__main__":
     nu = 1000 # energy queue factor;
 #    w = np.ones((N))      # weights for each user
     w = [1.5 if i%2==0 else 1 for i in range(N)]
-    V = 1e8
 #    arrival_lambda =30*np.ones((N))/N # average data arrival in Mb, sum of arrival over all 'N' users is a constant
-    lambda_param = 3
+    lambda_param = 1.5*1e6
     arrival_lambda = lambda_param*np.ones((N)) # 3 Mbps per user
 
     print('#user = %d, #channel=%d, K=%d, decoder = %s, Memory = %d, Delta = %d'%(N,n,K,decoder_mode, Memory, Delta))
@@ -137,10 +138,11 @@ if __name__ == "__main__":
 
 
 
-        #real-time channel generation
-        h_tmp = racian_mec(h0,0.3)
-        # increase h to close to 1 for better training; it is a trick widely adopted in deep learning
-        h = h_tmp*CHFACT
+        # #real-time channel generation
+        # h_tmp = racian_mec(h0,0.3)
+        # # increase h to close to 1 for better training; it is a trick widely adopted in deep learning
+        # h = h_tmp*CHFACT
+        h = channel_model()
         channel[i,:] = h
         # real-time arrival generation
         dataA[i,:] = np.random.poisson(arrival_lambda, size=(1, N))
@@ -181,8 +183,12 @@ if __name__ == "__main__":
             L_i_t = np.mean(L[:i_idx, :], axis=0) if i_idx > 1 else 0
             # average arrival rate at remote queue 
             b_i_t = np.mean(b[:i_idx, :], axis=0) if i_idx > 1 else 1
-            
-            d_t = (Q_i_t/arrival_lambda + (1 - m)*1 + m*(1 + L_i_t/b_i_t))
+
+            d_i_t = Q_i_t/arrival_lambda + (1 - m)*1 + m *(1 + L_i_t/b_i_t)
+
+            # for m_idx in range(N): 
+            #     d_i_t[m_idx] += m[m_idx]*(1 + L_i_t/b_i_t) if b_i_t[m_idx] > 0 else 0 
+
             # update the objective function
             f_val = f_val + np.sum(1/2 * d_t**2 + 2*d_t*(L[i_idx] - d_th))
 
@@ -200,6 +206,9 @@ if __name__ == "__main__":
         # Obj[i_idx],rate[i_idx,:],energy[i_idx,:]  = r_list[k_idx_his[-1]]
         Obj[i_idx] = v_list[k_idx_his[-1]]
         tmp, a[i_idx,:],b[i_idx,:],c[i_idx,:] = r_list[k_idx_his[-1]]
+        print(f'local computation: a_i =', a[i_idx,:]/1e6)
+        print(f'offloading volume: b_i =', b[i_idx,:]/1e6)
+        print(f'remote computation: c_i =', c[i_idx,:]/1e6)
 
 
     total_time=time.time()-start_time

@@ -11,5 +11,8 @@ def mini(x):
   return x*1e-3
 
 def dBm(x): 
-  return mini(10.**(x/10))
+  return mini(10**(x/10))
+
+def dB(x): 
+  return 10**(x/10)
 

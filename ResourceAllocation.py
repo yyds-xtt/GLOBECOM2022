@@ -21,13 +21,12 @@ def Algo1_NUM(mode, h, Q, L, V=20):
     ch_fact = 10**10   # scaling factors to avoid numerical precision problems
     d_fact = 10**6
 
-    N0 = W*d_fact*(10**(-17.4))*(10**(-3))*ch_fact  # noise power in watt
+    N0 = W*(10**(-17.4))*(10**(-3))  # noise power in watt
 
     N = len(Q)
 
     energy = np.zeros((N))
 
-    f_iL = np.zeros((N))
     f0_val = 0
     a_i = np.zeros((N))
 
@@ -77,7 +76,7 @@ def Algo1_NUM(mode, h, Q, L, V=20):
 
             # objective value of remote offloading
             b_hat = np.minimum(q1[i], np.round(
-                W*delta/R * np.log2(1 + p_i_max*h[i]/N0)))
+                W*delta/R * np.log2(1 + p_i_max*h[i]/N0/W)))
             
             b1[i] = 0 if (q1[i] <= l1[i]) else np.maximum(0, np.minimum(
                 np.round(W*delta/R * np.log2(h[i]*(q1[i] - l1[i])/(V*N0*R*np.log(2)))), b_hat))
@@ -114,7 +113,6 @@ def Algo1_NUM(mode, h, Q, L, V=20):
     f_val = f1_val + f0_val + f2_val
 
     f_val = np.around(f_val, decimals=6)
-
     return f_val, a_i, b_i, c_i
 
 # if __name__ == "__main__":

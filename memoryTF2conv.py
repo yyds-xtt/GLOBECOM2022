@@ -97,7 +97,7 @@ class MemoryDNN:
         # train the DNN
         hist = self.model.fit(h_train, m_train, verbose=0)
         self.cost = hist.history['loss'][0]
-        assert(self.cost > 0)
+        # assert(self.cost > 0)
         self.cost_his.append(self.cost)
 
     def decode(self, h, k = 1, mode = 'OP'):
@@ -107,11 +107,11 @@ class MemoryDNN:
 
         m_pred = self.model.predict(h)
 
-        if mode is 'OP':
+        if mode == 'OP':
             return self.knm(m_pred[0], k)
-        elif mode is 'KNN':
+        elif mode =='KNN':
             return self.knn(m_pred[0], k)
-        elif mode is 'OPN':
+        elif mode =='OPN':
             return self.opn(m_pred[0], k)
         else:
             print("The action selection must be 'OP' or 'KNN'")
@@ -142,7 +142,7 @@ class MemoryDNN:
     
     def knn(self, m, k = 1):
         # list all 2^N binary offloading actions
-        if len(self.enumerate_actions) is 0:
+        if len(self.enumerate_actions) == 0:
             import itertools
             self.enumerate_actions = np.array(list(map(list, itertools.product([0, 1], repeat=self.net[0]))))
 
