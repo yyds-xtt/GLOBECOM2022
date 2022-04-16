@@ -19,4 +19,4 @@ def dB(x):
   return 10**(x/10)
 
 def todB(x): 
-  return 10*np.log10(x)
+  return 10.*np.log10(x)
