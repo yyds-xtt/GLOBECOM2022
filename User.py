@@ -68,11 +68,11 @@ class User:
         gain_w_fading_dB = gain_wo_fading_dB + h_tidle
         x = [i for i in range(T)]
 
-        plt.figure(0)
-        plt.plot(x, gain_w_fading_dB, "-", x, gain_wo_fading_dB, '--')
+        # plt.figure(0)
+        # plt.plot(x, gain_w_fading_dB, "-", x, gain_wo_fading_dB, '--')
         # self.plot_location()
-        plt.show()
-        print('finish showing!')
+        # plt.show()
+        # print('finish showing!')
 
         return gain_w_fading_dB
     
@@ -83,13 +83,22 @@ class User:
         for it, loc in enumerate(self.loc): 
             xt[it], yt[it] = loc.get_decart_pos()   
         print('start plotting') 
-        plt.figure(1)
+        
         plt.plot(xt, yt, '-')
 
 if __name__ == '__main__':
-    u = [110, np.pi/4, np.pi, 1.5] 
-    user = User(u)
-    user.generate_channel_gain()
+    init_location = [[110, np.pi/4, np.pi, 1.5], 
+        [110, np.pi*3/4, 0, 0],
+        [10, 0, np.pi*3/4, 0.9],
+        [80, -3/4*np.pi, np.pi/6, 1.5],
+        [110, -3/4*np.pi, np.pi/12, 1.5]] 
+    users = [User(iloc) for iloc in init_location]
+    plt.figure(1)
+    plt.grid
+    for iuser in users: 
+        iuser.generate_channel_gain()
+        iuser.plot_location()
+    plt.show()
     print('simulation finish!')
 
 
