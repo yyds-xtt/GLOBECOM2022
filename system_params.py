@@ -4,7 +4,7 @@ from utils import *
 N = 10 # number of users
 
 time = 120 # total simulation time
-delta = mini(100)
+delta = mini(200)
 T = int(time/delta) # number of TSs
 
 W = mega(1) # Bandwidth mhz
@@ -13,7 +13,7 @@ R = 1
 V = 1e4 # Lyapunov 
 
 # channel model 
-H_uav = 100 # high of uav 
+H_uav = 50 # high of uav 
 a_LOS = 9.16
 b_LOS = 0.16
 g0 = -50 # channel gain reference dB 

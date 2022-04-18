@@ -16,16 +16,26 @@ class Position:
         r = self.r  
         r2 = r**2
         dr2 = dr**2
-        nr = np.sqrt(r2 + dr2 + 2*r*dr*np.cos(dphi))
-        angle = np.arccos((r2 + nr**2 - dr2)/2/r/nr) + self.varphi 
-        return Position(nr, angle)
+        next_r = np.sqrt(r2 + dr2 + 2*r*dr*np.cos(dphi))
+        next_angle = np.arccos((r2 + next_r**2 - dr2)/2/r/next_r) + self.varphi
+        # next_angle = self.varphi + dphi  
+        return Position(next_r, next_angle)
 
-    # @property
-    def varphi(self): 
-        return self.varphi
-    # @property
-    def r(self): 
-        return self.r
+    def update_location(self, dr, dphi):
+        r = self.r  
+        coeff = [1, -2*r*np.cos(dphi), r**2 - dr**2]
+        root = np.roots(coeff)
+        next_r = root[np.where(root>0)][0]
+        next_varphi = self.varphi + dphi
+        return Position(next_r, next_varphi) 
+
+
+    # # @property
+    # def varphi(self): 
+    #     return self.varphi
+    # # @property
+    # def r(self): 
+    #     return self.r
     
     def get_decart_pos(self): 
         return (self.r*np.cos(self.varphi), self.r*np.sin(self.varphi))
@@ -37,7 +47,8 @@ class User:
         self.loc.append(Position(init_param[0], init_param[1]))
         self.phi = init_param[2]
         self.velocity = init_param[3]
-
+        self.channel_gain_dB = []
+        self.channal_gain_wo_fading_dB = []
         pass
 
     def generate_channel_gain(self): 
@@ -66,13 +77,17 @@ class User:
         distance = [(H_uav**2 + (position.r**2))**(gamma/2) for position in self.loc]
         gain_wo_fading_dB = todB(p_LOS + xi*(1 - p_LOS)) + g0 - todB(distance)
         gain_w_fading_dB = gain_wo_fading_dB + h_tidle
-        x = [i for i in range(T)]
+
+        self.channel_gain_dB = gain_w_fading_dB
+        self.channal_gain_wo_fading_dB = gain_wo_fading_dB
+        # x = [i for i in range(T)]
 
         # plt.figure(0)
         # plt.plot(x, gain_w_fading_dB, "-", x, gain_wo_fading_dB, '--')
+        # plt.figure(1)
         # self.plot_location()
         # plt.show()
-        # print('finish showing!')
+        print('finish showing!')
 
         return gain_w_fading_dB
     
@@ -81,10 +96,15 @@ class User:
         xt = np.zeros((T))
         yt = np.zeros((T))
         for it, loc in enumerate(self.loc): 
-            xt[it], yt[it] = loc.get_decart_pos()   
+            xt[it], yt[it] = loc.get_decart_pos() 
         print('start plotting') 
-        
-        plt.plot(xt, yt, '-')
+        plt.plot(xt[0], yt[0], 'o')
+        plt.plot(xt, yt, '-', linewidth=1)
+
+    def plot_channel_gain(self): 
+        x = [t for t in range (T)]
+        plt.plot(x, self.channel_gain_dB, '-', x, self.channal_gain_wo_fading_dB, '--', linewidth=1) 
+
 
 if __name__ == '__main__':
     init_location = [[110, np.pi/4, np.pi, 1.5], 
@@ -92,12 +112,23 @@ if __name__ == '__main__':
         [10, 0, np.pi*3/4, 0.9],
         [80, -3/4*np.pi, np.pi/6, 1.5],
         [110, -3/4*np.pi, np.pi/12, 1.5]] 
+    # init_location = [
+    # [10, 0, np.pi*3/4, 0.9]] 
     users = [User(iloc) for iloc in init_location]
-    plt.figure(1)
-    plt.grid
+    
     for iuser in users: 
         iuser.generate_channel_gain()
+        # iuser.plot_location()
+    
+    plt.figure(0)
+    plt.grid()
+    for iuser in users: 
         iuser.plot_location()
+    plt.figure(1)
+    plt.grid()
+    for iuser in users: 
+        iuser.plot_channel_gain()
+
     plt.show()
     print('simulation finish!')
 
