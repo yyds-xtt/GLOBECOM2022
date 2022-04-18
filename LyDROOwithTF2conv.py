@@ -78,8 +78,8 @@ if __name__ == "__main__":
 #    w = np.ones((N))      # weights for each user
     w = [1.5 if i%2==0 else 1 for i in range(N)]
 #    arrival_lambda =30*np.ones((N))/N # average data arrival in Mb, sum of arrival over all 'N' users is a constant
-    lambda_param = 1.5*1e6
-    arrival_lambda = lambda_param*np.ones((N)) # 3 Mbps per user
+    lambda_param = 1.5*1e6/R 
+    arrival_lambda = lambda_param*np.ones((N)) # 1.5 Mbps per user
 
     print('#user = %d, #channel=%d, K=%d, decoder = %s, Memory = %d, Delta = %d'%(N,n,K,decoder_mode, Memory, Delta))
 
@@ -112,14 +112,15 @@ if __name__ == "__main__":
     L = np.zeros((n,N)) # UAV queue in tasks
 
     Y = np.zeros((n,N)) # virtual energy queue in mJ
-    Obj = np.zeros(n) # objective values after solving problem (26)
+    Obj = np.zeros((n)) # objective values after solving problem (26)
     energy = np.zeros((n,N)) # energy consumption
     rate = np.zeros((n,N)) # achieved computation rate
     
     a = np.zeros((n, N)) # number of local computation tasks 
     b = np.zeros((n, N)) # number of offloading tasks 
     c = np.zeros((n, N))  # number of remote computation tasks
-    d_t = np.zeros((N)) # estimated delay 
+    delay = np.zeros((n, N)) # estimated delay 
+    d_t = np.zeros((N)) 
 
 
     for i in range(n):
@@ -176,15 +177,24 @@ if __name__ == "__main__":
             f_val = r_list[-1][0]
 
             # estimate the current value delay
-            
+            Q_i_t = np.zeros(N)
+            L_i_t = np.zeros(N)
+            b_i_t = np.zeros(N)
             # avarage local queue 
-            Q_i_t = np.mean(Q[:i_idx, :], axis=0) if i_idx > 1 else 0 
-            # average uav queue 
-            L_i_t = np.mean(L[:i_idx, :], axis=0) if i_idx > 1 else 0
-            # average arrival rate at remote queue 
-            b_i_t = np.mean(b[:i_idx, :], axis=0) if i_idx > 1 else 1
+            if i_idx > 1: 
+                Q_i_t = np.mean(Q[:i_idx, :], axis=0) 
+                # average uav queue 
+                L_i_t = np.mean(L[:i_idx, :], axis=0)
+                # average arrival rate at remote queue 
+                b_i_t = np.mean(b[:i_idx, :], axis=0)
 
-            d_i_t = Q_i_t/arrival_lambda + (1 - m)*1 + m *(1 + L_i_t/b_i_t)
+            d_i_t = np.sum(Q_i_t/arrival_lambda + (1 - m)*1)
+        
+            for iuser, bt in enumerate(b_i_t): 
+                if bt > 0: 
+                    d_i_t = d_i_t + m[iuser] *(1 + L_i_t[iuser]/bt)
+                else: 
+                    d_i_t = d_i_t + m[iuser] *(1 + L_i_t[iuser]/bt)
 
             # for m_idx in range(N): 
             #     d_i_t[m_idx] += m[m_idx]*(1 + L_i_t/b_i_t) if b_i_t[m_idx] > 0 else 0 
@@ -206,9 +216,9 @@ if __name__ == "__main__":
         # Obj[i_idx],rate[i_idx,:],energy[i_idx,:]  = r_list[k_idx_his[-1]]
         Obj[i_idx] = v_list[k_idx_his[-1]]
         tmp, a[i_idx,:],b[i_idx,:],c[i_idx,:] = r_list[k_idx_his[-1]]
-        print(f'local computation: a_i =', a[i_idx,:]/1e6)
-        print(f'offloading volume: b_i =', b[i_idx,:]/1e6)
-        print(f'remote computation: c_i =', c[i_idx,:]/1e6)
+        print(f'local computation: a_i =', a[i_idx,:])
+        print(f'offloading volume: b_i =', b[i_idx,:])
+        print(f'remote computation: c_i =', c[i_idx,:])
 
 
     total_time=time.time()-start_time

@@ -19,6 +19,8 @@ from memory import MemoryDNN
 # import the resource allocation function
 # replace it with your algorithm when applying LyDROO in other problems
 from ResourceAllocation import Algo1_NUM
+import User
+from utils import * 
 
 import math
 
@@ -83,15 +85,29 @@ if __name__ == "__main__":
     dataA = np.zeros((n,N))  # arrival data size
 
 
-    # generate channel
-    dist_v = np.linspace(start = 120, stop = 255, num = N)
-    Ad = 3
-    fc = 915*10**6
-    loss_exponent = 3 # path loss exponent
-    light = 3*10**8
-    h0 = np.ones((N))
-    for j in range(0,N):
-        h0[j] = Ad*(light/4/math.pi/fc/dist_v[j])**(loss_exponent)
+    # # generate channel
+    # dist_v = np.linspace(start = 120, stop = 255, num = N)
+    # Ad = 3
+    # fc = 915*10**6
+    # loss_exponent = 3 # path loss exponent
+    # light = 3*10**8
+    # h0 = np.ones((N))
+    # for j in range(0,N):
+    #     h0[j] = Ad*(light/4/math.pi/fc/dist_v[j])**(loss_exponent)
+
+    init_location = [[110, np.pi/4, np.pi, 1.5], 
+        [110, np.pi*3/4, 0, 0],
+        [10, 0, np.pi*3/4, 0.9],
+        [80, -3/4*np.pi, np.pi/6, 1.5],
+        [110, -3/4*np.pi, np.pi/12, 1.5]] 
+    # init_location = [
+    # [10, 0, np.pi*3/4, 0.9]] 
+    users = [User(iloc) for iloc in init_location]
+    
+    for iuser in users: 
+        iuser.generate_channel_gain()
+
+
 
 
     mem = MemoryDNN(net = [N*3, 256, 128, N],
@@ -128,10 +144,12 @@ if __name__ == "__main__":
         i_idx = i
 
 
-        #real-time channel generation
-        h_tmp = racian_mec(h0,0.3)
-        # increase h to close to 1 for better training; it is a trick widely adopted in deep learning
-        h = h_tmp*CHFACT
+        # #real-time channel generation
+        # h_tmp = racian_mec(h0,0.3)
+        # # increase h to close to 1 for better training; it is a trick widely adopted in deep learning
+        # h = h_tmp*CHFACT
+
+        h = [toLinear(user.channel_gain_dB[i]) for user in users] 
         channel[i,:] = h
         # real-time arrival generation
         dataA[i,:] = np.random.exponential(arrival_lambda)

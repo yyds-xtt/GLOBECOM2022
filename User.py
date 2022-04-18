@@ -1,6 +1,3 @@
-
-from re import S
-from turtle import update
 import numpy as np
 import matplotlib.pyplot as plt 
 
@@ -28,14 +25,6 @@ class Position:
         next_r = root[np.where(root>0)][0]
         next_varphi = self.varphi + dphi
         return Position(next_r, next_varphi) 
-
-
-    # # @property
-    # def varphi(self): 
-    #     return self.varphi
-    # # @property
-    # def r(self): 
-    #     return self.r
     
     def get_decart_pos(self): 
         return (self.r*np.cos(self.varphi), self.r*np.sin(self.varphi))
@@ -103,7 +92,7 @@ class User:
 
     def plot_channel_gain(self): 
         x = [t for t in range (T)]
-        plt.plot(x, self.channel_gain_dB, '-', x, self.channal_gain_wo_fading_dB, '--', linewidth=1) 
+        plt.plot(x, self.channel_gain_dB, '-', x, self.channal_gain_wo_fading_dB, '--', linewidth=0.8) 
 
 
 if __name__ == '__main__':
