@@ -52,6 +52,7 @@ def Algo1_NUM(mode, h, Q, L, V=20):
 
         # update resource allocation variable
         f_i[idx0] = f0
+
         # update local computation volume                                                                                                                                                               
         a_i = np.round(f_i*delta/F)
 
@@ -124,7 +125,6 @@ def Algo1_NUM(mode, h, Q, L, V=20):
     f_val = f1_val + f0_val + f2_val
 
     f_val = np.around(f_val, decimals=6)
-    
     return f_val, a_i, b_i, c_i, energy
 
 # if __name__ == "__main__":
@@ -136,3 +136,6 @@ def Algo1_NUM(mode, h, Q, L, V=20):
 
 #     t1, t2, t3, t4 = Algo1_NUM(mode, h, Q, L)
 #     print('simulation finish!')
+
+
+# array([ 51.,   0., 104.,  87.,  77.,  61., 100.,   0.,  77.,  68.])

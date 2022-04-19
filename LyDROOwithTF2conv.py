@@ -29,7 +29,7 @@ import time
 import os 
 
 def create_img_folder(): 
-    path = f'./V={V/1e9}*1e9/'
+    path = f'./V=1e{V},dth={d_th},lambda={lambda_param}/'
     os.makedirs(path, exist_ok=True)
     print(f"Directory {os.getcwd()}")
     return path 
@@ -43,11 +43,12 @@ def plot_rate( rate_his, rolling_intv = 50, ylabel='Normalized Computation Rate'
     df = pd.DataFrame(rate_his)
 
 
-    mpl.style.use('seaborn')
+    # mpl.style.use('seaborn')
     fig, ax = plt.subplots(figsize=(15,8))
-
-    plt.plot(np.arange(len(rate_array))+1, np.hstack(df.rolling(rolling_intv, min_periods=1).mean().values), 'b')
-    plt.fill_between(np.arange(len(rate_array))+1, np.hstack(df.rolling(rolling_intv, min_periods=1).min()[0].values), np.hstack(df.rolling(rolling_intv, min_periods=1).max()[0].values), color = 'b', alpha = 0.2)
+    plt.grid()
+    plt.plot(np.arange(len(rate_array))+1, rate_array)
+    # plt.plot(np.arange(len(rate_array))+1, np.hstack(df.rolling(rolling_intv, min_periods=1).mean().values), 'b')
+    # plt.fill_between(np.arange(len(rate_array))+1, np.hstack(df.rolling(rolling_intv, min_periods=1).min()[0].values), np.hstack(df.rolling(rolling_intv, min_periods=1).max()[0].values), color = 'b', alpha = 0.2)
     plt.ylabel(ylabel)
     plt.xlabel('Time Frames')
     plt.savefig(name)
@@ -63,17 +64,12 @@ if __name__ == "__main__":
     '''
 
     path = create_img_folder()
+    V = 10**V
 
     N = 10                # number of users
-    n = 100                # number of time frames
+    n = 50              # number of time frames
     K = N                   # initialize K = N
-    decoder_mode = 'OPN'    # the quantization mode could be 'OP' (Order-preserving) or 'KNN' or 'OPN' (Order-Preserving with noise)
-    Memory = 1024          # capacity of memory structure
-    Delta = 32             # Update interval for adaptive K
 
-    energy_thresh = np.ones((N))*0.08 # energy comsumption threshold in J per time slot
-#    arrival_lambda =30*np.ones((N))/N # average data arrival in Mb, sum of arrival over all 'N' users is a constant
-    lambda_param = np.round(0.15*1e6/R) 
     arrival_lambda = lambda_param*np.ones((N)) # 1.5 Mbps per user
 
     print('#user = %d, #channel=%d, K=%d, decoder = %s, Memory = %d, Delta = %d'%(N,n,K,decoder_mode, Memory, Delta))
@@ -109,6 +105,7 @@ if __name__ == "__main__":
     k_idx_his = [] # store the index of optimal offloading actor
     Q = np.zeros((n,N)) # local queue in tasks
     L = np.zeros((n,N)) # UAV queue in tasks
+    D = np.zeros((n,N)) # delay in time slots
 
     Y = np.zeros((n,N)) # virtual energy queue in mJ
     Obj = np.zeros((n)) # objective values after solving problem (26)
@@ -155,12 +152,10 @@ if __name__ == "__main__":
         # 4) ‘Queueing module’ of LyDROO
         if i_idx > 0:
             # update queues
-            Q[i_idx,:] = Q[i_idx-1,:] + dataA[i_idx-1,:] - a[i_idx-1,:] - b[i_idx-1,:]# current data queue
-            # assert Q is positive due to float error
-            Q[i_idx,Q[i_idx,:]<0] =0
-            L[i_idx, :] = L[i_idx-1,:] + b[i_idx-1,:] - c[i_idx-1,:] 
-            # assert Y is positive due to float error
-            L[i_idx,L[i_idx,:]<0] =0
+            Q[i_idx,:] = np.maximum(0, Q[i_idx-1,:] - a[i_idx-1,:] - b[i_idx-1,:]) + dataA[i_idx-1,:] # current data queue
+            L[i_idx,:] = np.maximum(0, L[i_idx-1,:] - c[i_idx-1,:]) + b[i_idx-1,:]
+            D[i_idx,:] = D[i_idx-1,:] + scale_delay*delay[i_idx-1, :] - scale_delay*d_th
+            
 
         # scale Q and Y to 1
         nn_input =np.vstack( (h, Q[i_idx,:],L[i_idx,:])).transpose().flatten()
@@ -199,7 +194,7 @@ if __name__ == "__main__":
                     d_i_t[iuser] = d_i_t[iuser] + m[iuser] *(1 + L_i_t[iuser]/bt)
 
             # update the objective function
-            f_val = f_val + scale_delay*np.sum(1/2 * d_i_t**2 + d_i_t*(L[i_idx] - d_th))
+            f_val = f_val + scale_delay*np.sum(1/2 * d_i_t**2 + d_i_t*(D[i_idx,:] - d_th))
 
             v_list.append(f_val)
             delay_list.append(d_i_t)
@@ -228,12 +223,13 @@ if __name__ == "__main__":
     total_time=time.time()-start_time
     mem.plot_cost(path_name=path+'TraningLoss')
 
-    plot_rate(Q.sum(axis=1)/N, 100, 'Average Data Queue', name=path+'AvgQueue')
-    plot_rate(energy.sum(axis=1)/N, 100, 'Average Energy Consumption', name=path+'AvgEnergy')
-    plot_rate(delay.sum(axis=1)/N, 100, 'Average Latency',name=path+'AvgDelay')
+    plot_rate(Q.sum(axis=1)/N, 100, 'User queue length', name=path+'UserQueue')
+    plot_rate(L.sum(axis=1)/N, 100, 'UAV queue length', name=path+'UAVQueue')
+    plot_rate(energy.sum(axis=1)/N/delta*1000, 100, 'Power consumption (mW)', name=path+'AvgPower')
+    plot_rate(delay.sum(axis=1)/N, 100, 'Latency (TS)',name=path+'AvgDelay')
 
     print('Average time per channel:%s'%(total_time/n))
 
     # save all data
-    sio.savemat('./result_%d.mat'%N, {'input_h': channel/CHFACT,'data_arrival':dataA,'data_queue':Q,'energy_queue':Y,'off_mode':mode_his,'rate':rate,'energy_consumption':energy,'data_rate':rate,'objective':Obj})
+    sio.savemat('./result_%d.mat'%N, {'input_h': channel/CHFACT,'data_arrival':dataA,'local_queue':Q,'uav_queue':L,'off_mode':mode_his,'rate':rate,'energy_consumption':energy,'data_rate':rate,'objective':Obj})
     print('completed!')
