@@ -47,11 +47,12 @@ def Algo1_NUM(mode, h, Q, L, V=20):
 
             f_hat = np.minimum(f_i_max, q0[i]*F/delta)
             f0[i] = np.minimum(np.sqrt(q0[i]/3/F/V/kappa), f_hat)
-            energy[tmp_id] = kappa*(f0[i]**3)
-            f0_val = f0_val + energy[tmp_id] - q0[i]*f0[i]*delta/F
+            energy[tmp_id] += kappa*(f0[i]**3)*delta
+            f0_val = f0_val + V*energy[tmp_id] - q0[i]*f0[i]*delta/F
+
         # update resource allocation variable
         f_i[idx0] = f0
-        # update local computation volume
+        # update local computation volume                                                                                                                                                               
         a_i = np.round(f_i*delta/F)
 
     idx1 = np.where(mode == 1)[0]
@@ -62,25 +63,31 @@ def Algo1_NUM(mode, h, Q, L, V=20):
     b_i = np.zeros((N))
     c_i = np.zeros((N))
 
+
     if M1 == 0:
         f1_val = 0  # objective value of remote offloading
     else:
         q1 = np.zeros((M1))
         l1 = np.zeros((M1))
         b1 = np.zeros((M1))  # optimal offloading volumn
-        f1 = np.zeros((M1))  # optimal uav computation frequency
+        h1 = np.zeros((M1))
+
         for i in range(M1):
             tmp_id = idx1[i]
             q1[i] = Q[tmp_id]
             l1[i] = L[tmp_id]
+            h1[i] = h[tmp_id]
 
             # objective value of remote offloading
             b_hat = np.minimum(q1[i], np.round(
-                W*delta/R *  np.log2(1 + p_i_max*h[i]/N0/W)))
+                W*delta/R *  np.log2(1 + p_i_max*h1[i]/N0/W)))
             
             b1[i] = 0 if (q1[i] <= l1[i]) else np.maximum(0, np.minimum(
-                np.round(W*delta/R * np.log2(h[i]*(q1[i] - l1[i])/(V*N0*R*np.log(2)))), b_hat))
-            f1_val = f1_val + b1[i]*(l1[i] - q1[i]) + V*(N0*W*delta/h[i])*(2**(b1[i]*R/W/delta) - 1)
+                np.round(W*delta/R * np.log2(h1[i]*(q1[i] - l1[i])/(V*N0*R*np.log(2)))), b_hat))
+            
+            energy[tmp_id] += (N0*W*delta/h1[i])*(2**(b1[i]*R/W/delta) - 1)
+            
+            f1_val = f1_val - b1[i]*(q1[i]- l1[i]) + V*energy[tmp_id]
         
         # update offloading volume 
         b_i[idx1] = b1
@@ -101,11 +108,15 @@ def Algo1_NUM(mode, h, Q, L, V=20):
         linear_constraint = LinearConstraint(x, 0, f_u_max)
 
         f_iU_0 = np.ones_like(idx1)
-        res = minimize(objective_func, f_iU_0, method='trust-constr', jac=obj_der, hess=obj_hess,
-                    constraints=[linear_constraint], options={'verbose': 1, 'disp': True}, bounds=bounds)
+        res = minimize(objective_func, f_iU_0, method='trust-constr', jac=obj_der, hess=obj_hess, tol=1e-7,
+                    constraints=[linear_constraint], bounds=bounds)
 
         # update uav frequency 
-        f_iU[idx1] = res.x
+        f_u = res.x
+        
+        energy[idx1] += psi*kappa*delta*(f_u**3)
+        f_iU[idx1] = f_u
+
         c_i = np.round(f_iU*delta/F)
 
         f2_val = res.fun
@@ -113,7 +124,8 @@ def Algo1_NUM(mode, h, Q, L, V=20):
     f_val = f1_val + f0_val + f2_val
 
     f_val = np.around(f_val, decimals=6)
-    return f_val, a_i, b_i, c_i
+    
+    return f_val, a_i, b_i, c_i, energy
 
 # if __name__ == "__main__":
 #     mode = np.asarray([1, 0, 0, 1, 1, 0, 1])
@@ -122,5 +134,5 @@ def Algo1_NUM(mode, h, Q, L, V=20):
 #     Q = np.asarray([11, 11, 12, 7, 7, 4, 13])
 #     L = np.asarray([12, 14, 11, 2, 1, 6, 5])
 
-#     t1, t2 = Algo1_NUM(mode, h, Q, L)
+#     t1, t2, t3, t4 = Algo1_NUM(mode, h, Q, L)
 #     print('simulation finish!')
