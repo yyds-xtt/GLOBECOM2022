@@ -18,7 +18,7 @@ import numpy as np                         # import numpy
 from memoryTF2conv import MemoryDNN
 # from optimization import bisection
 from ResourceAllocation import Algo1_NUM
-from system_params import d_th, scale_delay, V
+from system_params import d_th, scale_delay, V, n
 from User import *
 
 
@@ -29,7 +29,7 @@ import time
 import os 
 
 def create_img_folder(): 
-    path = f'./V=1e{V},dth={d_th},lambda={lambda_param}/'
+    path = f'./V=1e{V},dth={d_th},lambda={lambda_param},n={n}/'
     os.makedirs(path, exist_ok=True)
     print(f"Directory {os.getcwd()}")
     return path 
@@ -46,11 +46,12 @@ def plot_rate( rate_his, rolling_intv = 50, ylabel='Normalized Computation Rate'
     # mpl.style.use('seaborn')
     fig, ax = plt.subplots(figsize=(15,8))
     plt.grid()
-    plt.plot(np.arange(len(rate_array))+1, rate_array)
-    # plt.plot(np.arange(len(rate_array))+1, np.hstack(df.rolling(rolling_intv, min_periods=1).mean().values), 'b')
-    # plt.fill_between(np.arange(len(rate_array))+1, np.hstack(df.rolling(rolling_intv, min_periods=1).min()[0].values), np.hstack(df.rolling(rolling_intv, min_periods=1).max()[0].values), color = 'b', alpha = 0.2)
+    plt.plot(np.arange(len(rate_array))+1, np.hstack(df.rolling(rolling_intv, min_periods=1).mean().values), 'b')
+    plt.fill_between(np.arange(len(rate_array))+1, np.hstack(df.rolling(rolling_intv, min_periods=1).min()[0].values), np.hstack(df.rolling(rolling_intv, min_periods=1).max()[0].values), color = 'b', alpha = 0.2)
+    plt.plot(np.arange(len(rate_array)), rate_array)
     plt.ylabel(ylabel)
     plt.xlabel('Time Frames')
+    plt.legend(['rooling', 'fill_between', 'rate'])
     plt.savefig(name)
     plt.show()
 
@@ -67,7 +68,7 @@ if __name__ == "__main__":
     V = 10**V
 
     N = 10                # number of users
-    n = 50              # number of time frames
+
     K = N                   # initialize K = N
 
     arrival_lambda = lambda_param*np.ones((N)) # 1.5 Mbps per user
