@@ -26,6 +26,7 @@ def Algo1_NUM(mode, h, Q, L, V=20):
     N = len(Q)
 
     energy = np.zeros((N))
+    energy_uav = 0 
 
     f0_val = 0
     a_i = np.zeros((N))
@@ -86,7 +87,7 @@ def Algo1_NUM(mode, h, Q, L, V=20):
             b1[i] = 0 if (q1[i] <= l1[i]) else np.maximum(0, np.minimum(
                 np.round(W*delta/R * np.log2(h1[i]*(q1[i] - l1[i])/(V*N0*R*np.log(2)))), b_hat))
             
-            energy[tmp_id] += (N0*W*delta/h1[i])*(2**(b1[i]*R/W/delta) - 1)
+            energy[tmp_id] = (N0*W*delta/h1[i])*(2**(b1[i]*R/W/delta) - 1)
             
             f1_val = f1_val - b1[i]*(q1[i]- l1[i]) + V*energy[tmp_id]
         
@@ -97,7 +98,6 @@ def Algo1_NUM(mode, h, Q, L, V=20):
 
         def objective_func(f_iU):
             return np.sum(-L[idx1]*f_iU*delta/F + V*psi*kappa*delta*(f_iU**3))
-
         def obj_der(f_iU): 
             return -L[idx1]*delta/F + V*psi*kappa*3*(f_iU**2)
 
@@ -114,18 +114,18 @@ def Algo1_NUM(mode, h, Q, L, V=20):
 
         # update uav frequency 
         f_u = res.x
-        
-        energy[idx1] += psi*kappa*delta*(f_u**3)
+    
+        energy_uav = np.round(np.sum(kappa*delta*(f_u**3)), decimals=6)
         f_iU[idx1] = f_u
 
         c_i = np.round(f_iU*delta/F)
 
-        f2_val = res.fun
+        f2_val = np.around(res.fun, decimals=6)
 
     f_val = f1_val + f0_val + f2_val
 
     f_val = np.around(f_val, decimals=6)
-    return f_val, a_i, b_i, c_i, energy
+    return f_val, a_i, b_i, c_i, energy, energy_uav 
 
 # if __name__ == "__main__":
 #     mode = np.asarray([1, 0, 0, 1, 1, 0, 1])

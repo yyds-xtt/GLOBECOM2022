@@ -13,6 +13,7 @@
 
 import scipy.io as sio                     # import scipy.io for .mat file I/
 import numpy as np                         # import numpy
+import pandas as pd 
 
 # for tensorflow2
 from memoryTF2conv import MemoryDNN
@@ -21,15 +22,12 @@ from ResourceAllocation import Algo1_NUM
 from system_params import d_th, scale_delay, V
 from User import *
 
-
-import math
-
 import time
 
 import os 
 
 def create_img_folder(): 
-    path = f'./V=1e{V},dth={d_th},lambda={lambda_param}/'
+    path = f'./V=1e{V},dth={d_th},lambda={lambda_param},n={n},W={W}/'
     os.makedirs(path, exist_ok=True)
     print(f"Directory {os.getcwd()}")
     return path 
@@ -110,6 +108,7 @@ if __name__ == "__main__":
     Y = np.zeros((n,N)) # virtual energy queue in mJ
     Obj = np.zeros((n)) # objective values after solving problem (26)
     energy = np.zeros((n,N)) # energy consumption
+    energy_uav = np.zeros((n))
     rate = np.zeros((n,N)) # achieved computation rate
     d_t = np.zeros((n, N)) 
     
@@ -211,7 +210,7 @@ if __name__ == "__main__":
         # Obj[i_idx],rate[i_idx,:],energy[i_idx,:]  = r_list[k_idx_his[-1]]
         Obj[i_idx] = v_list[k_idx_his[-1]]
         delay[i_idx] = delay_list[k_idx_his[-1]]
-        tmp, a[i_idx,:],b[i_idx,:],c[i_idx,:], energy[i_idx, :] = r_list[k_idx_his[-1]]
+        tmp, a[i_idx,:],b[i_idx,:],c[i_idx,:], energy[i_idx, :], energy_uav[i_idx] = r_list[k_idx_his[-1]]
 
         print(f'local computation: a_i =', a[i_idx,:])
         print(f'offloading volume: b_i =', b[i_idx,:])
@@ -221,15 +220,22 @@ if __name__ == "__main__":
 
 
     total_time=time.time()-start_time
+    print(f'total time = {total_time}')
     mem.plot_cost(path_name=path+'TraningLoss')
 
     plot_rate(Q.sum(axis=1)/N, 100, 'User queue length', name=path+'UserQueue')
     plot_rate(L.sum(axis=1)/N, 100, 'UAV queue length', name=path+'UAVQueue')
     plot_rate(energy.sum(axis=1)/N/delta*1000, 100, 'Power consumption (mW)', name=path+'AvgPower')
     plot_rate(delay.sum(axis=1)/N, 100, 'Latency (TS)',name=path+'AvgDelay')
+    plot_rate(energy_uav/delta, 100, 'UAV power consumption', name=path+'AvgPowerUAV')
 
     print('Average time per channel:%s'%(total_time/n))
 
     # save all data
-    sio.savemat('./result_%d.mat'%N, {'input_h': channel/CHFACT,'data_arrival':dataA,'local_queue':Q,'uav_queue':L,'off_mode':mode_his,'rate':rate,'energy_consumption':energy,'data_rate':rate,'objective':Obj})
+    
+    sio.savemat('./result_%d.mat'%N, {'input_h': channel/CHFACT,'data_arrival':dataA,'local_queue':Q,'uav_queue':L,'off_mode':mode_his,'energy_consumption':energy,'delay':delay,'objective':Obj})
+    df = pd.DataFrame({'input_h': channel/CHFACT,'data_arrival':dataA,'local_queue':Q,'uav_queue':L,'off_mode':mode_his,'energy_user':energy,'energy_uav':energy_uav, 'delay':delay,'objective':Obj})
+    name= path + 'submission2.csv'
+    df.to_csv(name, index=False)
+
     print('completed!')
