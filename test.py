@@ -1,3 +1,4 @@
+from matplotlib.pyplot import axis
 import numpy as np
 from scipy.optimize import minimize, Bounds, LinearConstraint
 
@@ -38,34 +39,45 @@ x0 = np.array([1.3, 0.7, 0.8, 1.9, 1.2])
 # bounds = Bounds([0, -0.5], [1.0, 2.0])
 # linear_constraint = LinearConstraint([[1, 2], [2, 1]], [-np.inf, 1], [1, 1])
 
-from system_params import *
+# from system_params import *
 
-mode = np.asarray([1, 0, 0, 1, 1, 0, 1])
-f_iU_0 = np.asarray([1, 1, 1, 1])
-idx1=np.where(mode==1)[0]
-Q = np.asarray([11, 11, 12, 7, 7, 4, 13])
+# mode = np.asarray([1, 0, 0, 1, 1, 0, 1])
+# f_iU_0 = np.asarray([1, 1, 1, 1])
+# idx1=np.where(mode==1)[0]
+# Q = np.asarray([11, 11, 12, 7, 7, 4, 13])
 
-def objective_func(f_iU):
-    return np.sum(-Q[idx1]*f_iU*delta/F + V*psi*kappa*delta*(f_iU**3))
+# def objective_func(f_iU):
+#     return np.sum(-Q[idx1]*f_iU*delta/F + V*psi*kappa*delta*(f_iU**3))
 
-def obj_der(f_iU): 
-    return -Q[idx1]*delta/F + V*psi*kappa*3*(f_iU**2)
+# def obj_der(f_iU): 
+#     return -Q[idx1]*delta/F + V*psi*kappa*3*(f_iU**2)
 
-def obj_hess(f_iU): 
-    return V*kappa*psi*delta*6*f_iU
+# def obj_hess(f_iU): 
+#     return V*kappa*psi*delta*6*f_iU
 
-x = np.ones_like(idx1)
-bounds = Bounds(x*0, x*Q[idx1]*F/delta)
-linear_constraint = LinearConstraint(x, 0, f_u_max)
+# x = np.ones_like(idx1)
+# bounds = Bounds(x*0, x*Q[idx1]*F/delta)
+# linear_constraint = LinearConstraint(x, 0, f_u_max)
 
-f_iU_0 = np.ones_like(idx1)
-res = minimize(objective_func, f_iU_0, method='trust-constr', jac=obj_der, hess=obj_hess,
-               constraints=[linear_constraint], options={'verbose': 1, 'disp': True}, bounds=bounds)
+# f_iU_0 = np.ones_like(idx1)
+# res = minimize(objective_func, f_iU_0, method='trust-constr', jac=obj_der, hess=obj_hess,
+#                constraints=[linear_constraint], options={'verbose': 1, 'disp': True}, bounds=bounds)
 
-print(res.x)
-value = res.fun
-print(value)
-print('Simulation finish!')
+# print(res.x)
+# value = res.fun
+# print(value)
+# print('Simulation finish!')
+
+L = np.random.randint(10, 15, (3, 5))
+b = np.random.randint(2, 4, (3, 5))
+
+L_t = np.mean(L, axis=0)
+b_t = np.mean(b, axis=0)
+
+d = L_t/b_t 
+
+print('simulation completed')
+
 
 
 

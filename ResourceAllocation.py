@@ -73,6 +73,7 @@ def Algo1_NUM(mode, h, Q, L, V=20):
         l1 = np.zeros((M1))
         b1 = np.zeros((M1))  # optimal offloading volumn
         h1 = np.zeros((M1))
+        f1 = np.zeros((M1))
 
         for i in range(M1):
             tmp_id = idx1[i]
@@ -82,50 +83,49 @@ def Algo1_NUM(mode, h, Q, L, V=20):
 
             # objective value of remote offloading
             b_hat = np.minimum(q1[i], np.round(
-                W*delta/R *  np.log2(1 + p_i_max*h1[i]/N0/W)))
+               bw_W*delta/pk_size_R *  np.log2(1 + p_i_max*h1[i]/N0/bw_W)))
             
             b1[i] = 0 if (q1[i] <= l1[i]) else np.maximum(0, np.minimum(
-                np.round(W*delta/R * np.log2(h1[i]*(q1[i] - l1[i])/(V*N0*R*np.log(2)))), b_hat))
+                np.round(bw_W*delta/pk_size_R * np.log2(h1[i]*(q1[i] - l1[i])/(V*N0*pk_size_R*np.log(2)))), b_hat))
             
-            energy[tmp_id] = (N0*W*delta/h1[i])*(2**(b1[i]*R/W/delta) - 1)
+            energy[tmp_id] = (N0*bw_W*delta/h1[i])*(2**(b1[i]*pk_size_R/bw_W/delta) - 1)
             
-            f1_val = f1_val - b1[i]*(q1[i]- l1[i]) + V*energy[tmp_id]
-        
+            f0_val = f0_val - b1[i]*(q1[i]- l1[i]) + V*energy[tmp_id]
+
+            # optimize cpu frequency 
+            f_hat = np.minimum(f_u_max, l1[i]*F/delta)
+            f1[i] = np.minimum(np.sqrt(l1[i]/3/F/V/kappa/psi), f_hat)
+            energy_uav_tmp = kappa*(f1[i]**3)*delta
+            
+            f0_val = f0_val + V*psi*energy_uav_tmp - l1[i]*f1[i]*delta/F
+            energy_uav += energy_uav_tmp
+
         # update offloading volume 
         b_i[idx1] = b1
+        c_i[idx1] = np.round(f1*delta/F)
         
         # uav computation frequency
 
-        def objective_func(f_iU):
-            return np.sum(-L[idx1]*f_iU*delta/F + V*psi*kappa*delta*(f_iU**3))
-        def obj_der(f_iU): 
-            return -L[idx1]*delta/F + V*psi*kappa*3*(f_iU**2)
+        # def objective_func(f_iU):
+        #     return np.sum(-L[idx1]*f_iU*delta/F + V*psi*kappa*delta*(f_iU**3))
+        # def obj_der(f_iU): 
+        #     return -L[idx1]*delta/F + V*psi*kappa*3*(f_iU**2)
 
-        def obj_hess(f_iU): 
-            return V*kappa*psi*delta*6*f_iU
+        # def obj_hess(f_iU): 
+        #     return V*kappa*psi*delta*6*f_iU
 
-        x = np.ones_like(idx1)
-        bounds = Bounds(x*0, x*L[idx1]*F/delta)
-        linear_constraint = LinearConstraint(x, 0, f_u_max)
+        # x = np.ones_like(idx1)
+        # bounds = Bounds(x*0, x*L[idx1]*F/delta)
+        # linear_constraint = LinearConstraint(x, 0, f_u_max)
 
-        f_iU_0 = np.ones_like(idx1)
-        res = minimize(objective_func, f_iU_0, method='trust-constr', jac=obj_der, hess=obj_hess, tol=1e-7,
-                    constraints=[linear_constraint], bounds=bounds)
+        # f_iU_0 = np.ones_like(idx1)
+        # res = minimize(objective_func, f_iU_0, method='trust-constr', jac=obj_der, hess=obj_hess, tol=1e-7,
+        #             constraints=[linear_constraint], bounds=bounds)
 
         # update uav frequency 
-        f_u = res.x
-    
-        energy_uav = np.round(np.sum(kappa*delta*(f_u**3)), decimals=6)
-        f_iU[idx1] = f_u
+        # f_u = res.x
 
-        c_i = np.round(f_iU*delta/F)
-
-        f2_val = np.around(res.fun, decimals=6)
-
-    f_val = f1_val + f0_val + f2_val
-
-    f_val = np.around(f_val, decimals=6)
-    return f_val, a_i, b_i, c_i, energy, energy_uav 
+    return f0_val, a_i, b_i, c_i, energy, energy_uav 
 
 # if __name__ == "__main__":
 #     mode = np.asarray([1, 0, 0, 1, 1, 0, 1])

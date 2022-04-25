@@ -11,13 +11,6 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 import numpy as np
-import warnings 
-
-warnings.filterwarnings("ignore")
-
-print(tf.__version__)
-print(tf.keras.__version__)
-
 
 # DNN network for memory
 class MemoryDNN:
@@ -53,8 +46,9 @@ class MemoryDNN:
         self._build_net()
 
     def _build_net(self):
+        kn_size = 4
         self.model = keras.Sequential([
-                    layers.Conv1D(32, 3, activation='relu',input_shape=[int(self.net[0]/3),3]), # first Conv1D with 32 channels and kearnal size 3
+                    layers.Conv1D(32, kn_size, activation='relu',input_shape=[int(self.net[0]/4),kn_size]), # first Conv1D with 32 channels and kearnal size 3
                     layers.Conv1D(64, 3, activation='relu'), # second Conv1D with 32 channels and kearnal size 3
                     layers.Conv1D(64, 3, activation='relu'), # second Conv1D with 32 channels and kearnal size 3
                     layers.Flatten(),
@@ -91,7 +85,7 @@ class MemoryDNN:
         batch_memory = self.memory[sample_index, :]
         
         h_train = batch_memory[:, 0: self.net[0]]
-        h_train = h_train.reshape(self.batch_size,int(self.net[0]/3),3)
+        h_train = h_train.reshape(self.batch_size,int(self.net[0]/4),4)
         m_train = batch_memory[:, self.net[0]:]
         
         # print(h_train)          # (128, 10)
@@ -105,7 +99,7 @@ class MemoryDNN:
 
     def decode(self, h, k = 1, mode = 'OP'):
         # to have batch dimension when feed into tf placeholder
-        h=h.reshape(10,3)
+        h=h.reshape(10,4)
         h = h[np.newaxis, :]
 
         m_pred = self.model.predict(h)
@@ -159,7 +153,7 @@ class MemoryDNN:
         import matplotlib.pyplot as plt
         plt.plot(np.arange(len(self.cost_his))*self.training_interval, self.cost_his)
         plt.ylabel('Training Loss')
-        plt.ylim((0, 1))
+        # plt.ylim((0, 1))
         plt.xlabel('Time Frames')
         plt.savefig(path_name)
         plt.show()

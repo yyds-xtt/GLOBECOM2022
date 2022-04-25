@@ -27,7 +27,7 @@ import time
 import os 
 
 def create_img_folder(): 
-    path = f'./V=1e{V},dth={d_th},lambda={lambda_param},n={n},W={W}/'
+    path = f'./V=1e{V},dth={d_th},lambda={lambda_param},no_slots={no_slots},W={bw_W}/'
     os.makedirs(path, exist_ok=True)
     print(f"Directory {os.getcwd()}")
     return path 
@@ -64,17 +64,20 @@ if __name__ == "__main__":
     path = create_img_folder()
     V = 10**V
 
+<<<<<<< HEAD
+=======
     N = 10                # number of users
-    n = 50              # number of time frames
+    no_slots = 50              # number of time frames
+>>>>>>> ubuntu rebase
     K = N                   # initialize K = N
 
     arrival_lambda = lambda_param*np.ones((N)) # 1.5 Mbps per user
 
-    print('#user = %d, #channel=%d, K=%d, decoder = %s, Memory = %d, Delta = %d'%(N,n,K,decoder_mode, Memory, Delta))
+    print('#user = %d, #channel=%d, K=%d, decoder = %s, Memory = %d, Delta = %d'%(N,no_slots,K,decoder_mode, Memory, Delta))
 
     # initialize data
-    channel = np.zeros((n,N)) # chanel gains
-    dataA = np.zeros((n,N)) # arrival data size
+    channel = np.zeros((no_slots,N)) # chanel gains
+    dataA = np.zeros((no_slots,N)) # arrival data size
 
     init_location = [[110, np.pi/4, np.pi, 1.5], 
         [110, np.pi*3/4, 0, 0],
@@ -89,40 +92,40 @@ if __name__ == "__main__":
 
     users = [User(iloc) for iloc in init_location]
     
-    for iuser in users: 
-        iuser.generate_channel_gain()
+    # for iuser in users: 
+    #     iuser.generate_channel_gain()
     
-    mem = MemoryDNN(net = [N*3, 256, 128, N],
+    mem = MemoryDNN(net = [N*4, 256, 128, N],
                     learning_rate = 0.01,
-                    training_interval=10,
+                    training_interval=20,
                     batch_size=128,
                     memory_size=Memory)
 
     start_time=time.time()
     mode_his = [] # store the offloading mode
     k_idx_his = [] # store the index of optimal offloading actor
-    Q = np.zeros((n,N)) # local queue in tasks
-    L = np.zeros((n,N)) # UAV queue in tasks
-    D = np.zeros((n,N)) # delay in time slots
+    Q = np.zeros((no_slots,N)) # local queue in tasks
+    L = np.zeros((no_slots,N)) # UAV queue in tasks
+    D = np.zeros((no_slots,N)) # delay in time slots
 
-    Y = np.zeros((n,N)) # virtual energy queue in mJ
-    Obj = np.zeros((n)) # objective values after solving problem (26)
-    energy = np.zeros((n,N)) # energy consumption
-    energy_uav = np.zeros((n))
-    rate = np.zeros((n,N)) # achieved computation rate
-    d_t = np.zeros((n, N)) 
+    Y = np.zeros((no_slots,N)) # virtual energy queue in mJ
+    Obj = np.zeros((no_slots)) # objective values after solving problem (26)
+    energy = np.zeros((no_slots,N)) # energy consumption
+    energy_uav = np.zeros((no_slots))
+    rate = np.zeros((no_slots,N)) # achieved computation rate
+    d_t = np.zeros((no_slots, N)) 
     
-    a = np.zeros((n, N)) # number of local computation tasks 
-    b = np.zeros((n, N)) # number of offloading tasks 
-    c = np.zeros((n, N))  # number of remote computation tasks
-    delay = np.zeros((n, N)) # estimated delay 
+    a = np.zeros((no_slots, N)) # number of local computation tasks 
+    b = np.zeros((no_slots, N)) # number of offloading tasks 
+    c = np.zeros((no_slots, N))  # number of remote computation tasks
+    delay = np.zeros((no_slots, N)) # estimated delay 
 
 
 
-    for i in range(n):
+    for i in range(no_slots):
 
-        if i % (n//10) == 0:
-            print("%0.1f"%(i/n))
+        if i % (no_slots//10) == 0:
+            print("%0.1f"%(i/no_slots))
         if i> 0 and i % Delta == 0:
             # index counts from 0
             if Delta > 1:
@@ -140,7 +143,7 @@ if __name__ == "__main__":
         # # increase h to close to 1 for better training; it is a trick widely adopted in deep learning
         # h = h_tmp*CHFACT
         # h = channel_model()
-        h_tmp = [dB(iuser.channel_gain_dB[i]) for iuser in users] 
+        h_tmp = [dB(iuser.gain_dB[i]) for iuser in users] 
         h = h_tmp
             
         channel[i,:] = h
@@ -157,7 +160,7 @@ if __name__ == "__main__":
             
 
         # scale Q and Y to 1
-        nn_input =np.vstack( (h, Q[i_idx,:],L[i_idx,:])).transpose().flatten()
+        nn_input =np.vstack((h, Q[i_idx,:],L[i_idx,:],D[i_idx, :])).transpose().flatten()
 
 
         # 1) 'Actor module' of LyDROO
@@ -180,20 +183,21 @@ if __name__ == "__main__":
             b_i_t = np.zeros(N)
             # avarage local queue 
             if i_idx > 0: 
-                Q_i_t = np.mean(Q[:i_idx+1, :], axis=0) 
+                b_idx = np.maximum(0, i_idx - 20) 
+                Q_i_t = np.mean(Q[b_idx:i_idx, :], axis=0) 
                 # average uav queue 
-                L_i_t = np.mean(L[:i_idx+1, :], axis=0)
+                L_i_t = np.mean(L[b_idx:i_idx, :], axis=0)
                 # average arrival rate at remote queue 
-                b_i_t = np.mean(b[:i_idx, :], axis=0)
+                b_i_t = np.mean(b[b_idx:i_idx, :], axis=0)
 
             d_i_t = Q_i_t/arrival_lambda + (1 - m)*1
         
             for iuser, bt in enumerate(b_i_t): 
-                if bt > 0: 
+                if m[iuser] == 1 and bt != 0: 
                     d_i_t[iuser] = d_i_t[iuser] + m[iuser] *(1 + L_i_t[iuser]/bt)
 
             # update the objective function
-            f_val = f_val + scale_delay*np.sum(1/2 * d_i_t**2 + d_i_t*(D[i_idx,:] - d_th))
+            f_val = f_val + np.sum(1/2*(scale_delay*d_i_t)**2 + scale_delay*d_i_t*(D[i_idx,:] - scale_delay*d_th))
 
             v_list.append(f_val)
             delay_list.append(d_i_t)
@@ -229,13 +233,21 @@ if __name__ == "__main__":
     plot_rate(delay.sum(axis=1)/N, 100, 'Latency (TS)',name=path+'AvgDelay')
     plot_rate(energy_uav/delta, 100, 'UAV power consumption', name=path+'AvgPowerUAV')
 
-    print('Average time per channel:%s'%(total_time/n))
+    print('Average time per channel:%s'%(total_time/no_slots))
 
     # save all data
+    aQ = np.mean(Q, axis=1)
+    aL = np.mean(L, axis=1)
+    aE_i = np.mean(energy, axis=1)
+    aE_u = energy_uav
+    adelay = np.mean(delay, axis=1)
     
     sio.savemat('./result_%d.mat'%N, {'input_h': channel/CHFACT,'data_arrival':dataA,'local_queue':Q,'uav_queue':L,'off_mode':mode_his,'energy_consumption':energy,'delay':delay,'objective':Obj})
-    df = pd.DataFrame({'input_h': channel/CHFACT,'data_arrival':dataA,'local_queue':Q,'uav_queue':L,'off_mode':mode_his,'energy_user':energy,'energy_uav':energy_uav, 'delay':delay,'objective':Obj})
-    name= path + 'submission2.csv'
+    df = pd.DataFrame({'local_queue':aQ,'uav_queue':aL,'energy_user':aE_i,'energy_uav':aE_u, 'delay':adelay})
+    name= path + 'V1.csv'
     df.to_csv(name, index=False)
 
+    # df = pd.DataFrame({'input_h': channel/CHFACT,'data_arrival':dataA,'local_queue':Q,'uav_queue':L,'off_mode': mode_his,'energy_user': energy,'energy_uav': energy_uav,'delay':delay,'objective':Obj})
+    name= path + 'result.csv'
+    # return quequeue_rsue, energy
     print('completed!')
