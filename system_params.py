@@ -3,7 +3,7 @@ from utils import *
 # System parameters
 N = 10 # number of users
 
-time = 150 # total simulation time
+time = 50 # total simulation time
 delta = mini(100) 
 
 T = int(time/delta) # number of TSs

@@ -163,8 +163,8 @@ if __name__ == "__main__":
                 max_k = max(np.array(k_idx_his[-Delta:-1])%K) +1
             else:
                 max_k = k_idx_his[-1] +1
-            # K = min(max_k +1, N)
-            K = 40
+            K = min(max_k +1, N)
+            # K = 40
 
         i_idx = i
 
@@ -209,6 +209,7 @@ if __name__ == "__main__":
             l_norm = 1 
         if d_norm == 0: 
             d_norm = 1 
+        
         
 
         nn_input =np.vstack((h/h_norm, Q[i_idx,:]/q_norm, L[i_idx,:]/l_norm,D[i_idx, :]/d_norm)).transpose().flatten()
