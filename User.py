@@ -16,7 +16,7 @@ class User:
         self.channal_gain_wo_fading_dB = []
         
         # self.arrival_rate = arrival_rate
-        self.Q = np.zeros((no_slots))
+        self.Q = np.zeros((T))
         self.init_location = init_location
         
         self.generate_channel_gain(init_location)
@@ -48,10 +48,10 @@ class User:
         self.loc.append(initial_loc)
 
         mu, sigma = velocity*delta, 1/3*velocity*delta
-        dr = rng.normal(mu, sigma, (no_slots)) # different location for each time slot 
+        dr = rng.normal(mu, sigma, (T)) # different location for each time slot 
         dvarphi_arr = []
 
-        for i_t in range(1, no_slots): 
+        for i_t in range(1, T): 
             curr_pos = self.loc[-1]
 
             # update delta_varphi and varphi angle 
@@ -69,7 +69,7 @@ class User:
         p_LOS = 1./(1 + a_LOS*np.exp(-b_LOS*(theta - a_LOS)))
 
         # generate the small scale fading 
-        h_tidle = rng.normal(mu_gain, sigma_gain, size=(no_slots)) # dB
+        h_tidle = rng.normal(mu_gain, sigma_gain, size=(T)) # dB
 
         # calculate the channel gain 
         distance = [(H_uav**2 + (position.r**2))**(gamma/2) for position in self.loc]
@@ -80,8 +80,8 @@ class User:
     
     def plot_location(self): 
         
-        xt = np.zeros((no_slots))
-        yt = np.zeros((no_slots))
+        xt = np.zeros((T))
+        yt = np.zeros((T))
         for it, loc in enumerate(self.loc): 
             xt[it], yt[it] = loc.get_decart_pos() 
         print('start plotting') 
@@ -89,7 +89,7 @@ class User:
         plt.plot(xt, yt, '-', linewidth=1)
 
     def plot_channel_gain(self): 
-        x = [t for t in range (no_slots)]
+        x = [t for t in range (T)]
         plt.plot(x, self.gain_dB, '-', x, self.channal_gain_wo_fading_dB, '--', linewidth=0.8)
 
     def optimize_frequency(self, ts):  

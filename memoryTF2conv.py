@@ -12,6 +12,9 @@ from tensorflow import keras
 from tensorflow.keras import layers
 import numpy as np
 
+from numpy.random import default_rng
+rng = default_rng()
+
 # DNN network for memory
 class MemoryDNN:
     def __init__(
@@ -113,25 +116,25 @@ class MemoryDNN:
         else:
             print("The action selection must be 'OP' or 'KNN'")
     
-    def knm(self, m, k = 1):
-        # return k order-preserving binary actions
-        m_list = []
-        # generate the ﬁrst binary ofﬂoading decision with respect to equation (8)
-        m_list.append(1*(m>0.5))
+    # def knm(self, m, k = 1):
+    #     # return k order-preserving binary actions
+    #     m_list = []
+    #     # generate the ﬁrst binary ofﬂoading decision with respect to equation (8)
+    #     m_list.append(1*(m>0.5))
         
-        if k > 1:
-            # generate the remaining K-1 binary ofﬂoading decisions with respect to equation (9)
-            m_abs = abs(m-0.5)
-            idx_list = np.argsort(m_abs)[:k-1]
-            for i in range(k-1):
-                if m[idx_list[i]] >0.5:
-                    # set the \hat{x}_{t,(k-1)} to 0
-                    m_list.append(1*(m - m[idx_list[i]] > 0))
-                else:
-                    # set the \hat{x}_{t,(k-1)} to 1
-                    m_list.append(1*(m - m[idx_list[i]] >= 0))
+    #     if k > 1:
+    #         # generate the remaining K-1 binary ofﬂoading decisions with respect to equation (9)
+    #         m_abs = abs(m-0.5)
+    #         idx_list = np.argsort(m_abs)[:k-1]
+    #         for i in range(k-1):
+    #             if m[idx_list[i]] >0.5:
+    #                 # set the \hat{x}_{t,(k-1)} to 0
+    #                 m_list.append(1*(m - m[idx_list[i]] > 0))
+    #             else:
+    #                 # set the \hat{x}_{t,(k-1)} to 1
+    #                 m_list.append(1*(m - m[idx_list[i]] >= 0))
 
-        return m_list
+    #     return m_list
 
     
     def opn(self, m, k= 1):
@@ -147,13 +150,26 @@ class MemoryDNN:
         sqd = ((self.enumerate_actions - m)**2).sum(1)
         idx = np.argsort(sqd)
         return self.enumerate_actions[idx[:k]]
+    
+    def knm(self, m, k = 1):
+        # return k order-preserving binary actions
+        m_list = []
+        # generate the ﬁrst binary ofﬂoading decision with respect to equation (8)
+        m_list.append(1*(m>0.5))
+        
+        if k > 1:
+            for i in range(k-1):
+                m_list.append( np.int64(rng.uniform(low=0.0, high=1.0, size=10) < m) ) 
+
+        return m_list
         
 
     def plot_cost(self, path_name):
         import matplotlib.pyplot as plt
         plt.plot(np.arange(len(self.cost_his))*self.training_interval, self.cost_his)
-        plt.ylabel('Training Loss')
-        # plt.ylim((0, 1))
+        plt.ylabel('Training Cost')
+        plt.grid()
+        plt.ylim((0, 1))
         plt.xlabel('Time Frames')
         plt.savefig(path_name)
         plt.show()

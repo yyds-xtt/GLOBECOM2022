@@ -83,12 +83,12 @@ def Algo1_NUM(mode, h, Q, L, V=20):
 
             # objective value of remote offloading
             b_hat = np.minimum(q1[i], np.round(
-               bw_W*delta/pk_size_R *  np.log2(1 + p_i_max*h1[i]/N0/bw_W)))
+               W*delta/R *  np.log2(1 + p_i_max*h1[i]/N0/W)))
             
             b1[i] = 0 if (q1[i] <= l1[i]) else np.maximum(0, np.minimum(
-                np.round(bw_W*delta/pk_size_R * np.log2(h1[i]*(q1[i] - l1[i])/(V*N0*pk_size_R*np.log(2)))), b_hat))
+                np.round(W*delta/R * np.log2(h1[i]*(q1[i] - l1[i])/(V*N0*R*np.log(2)))), b_hat))
             
-            energy[tmp_id] = (N0*bw_W*delta/h1[i])*(2**(b1[i]*pk_size_R/bw_W/delta) - 1)
+            energy[tmp_id] = (N0*W*delta/h1[i])*(2**(b1[i]*R/W/delta) - 1)
             
             f0_val = f0_val - b1[i]*(q1[i]- l1[i]) + V*energy[tmp_id]
 
