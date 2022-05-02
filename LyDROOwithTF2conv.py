@@ -20,6 +20,7 @@ from memoryTF2conv import MemoryDNN
 # from optimization import bisection
 from ResourceAllocation import Algo1_NUM
 from system_params import d_th, scale_delay, V
+from ChannelModel import *
 from User import *
 
 import time
@@ -174,13 +175,13 @@ if __name__ == "__main__":
         # h_tmp = racian_mec(h0,0.3)
         # # increase h to close to 1 for better training; it is a trick widely adopted in deep learning
         # h = h_tmp*CHFACT
-        # h = channel_model()
-        h_tmp = np.array([dB(iuser.gain_dB[i]) for iuser in users])
-        h = h_tmp
+        h = dB(np.array(channel_model()))
+        # h_tmp = np.array([dB(iuser.gain_dB[i]) for iuser in users])
+        
             
         channel[i,:] = h
         # real-time arrival generation
-        dataA[i,:] = np.random.poisson(arrival_lambda, size=(1, N))
+        dataA[i,:] = np.round(np.random.uniform(0, arrival_lambda*2, size=(1, N)))
 
 
         # 4) ‘Queueing module’ of LyDROO
@@ -237,24 +238,25 @@ if __name__ == "__main__":
             b_i_t = np.zeros(N)
             # avarage local queue 
 
-            b_idx = np.maximum(0, i_idx - 20) 
-            Q_i_t = np.mean(Q[b_idx:i_idx+1, :] - (a_i + b_i), axis=0) 
+            b_idx = np.maximum(0, i_idx - 30) 
+            Q_i_t = np.mean(Q[b_idx:i_idx+1, :], axis=0) 
             # average uav queue 
-            L_i_t = np.mean(L[b_idx:i_idx+1, :] + b_i - c_i, axis=0)
+            L_i_t = np.mean(L[b_idx:i_idx+1, :], axis=0)
             # average arrival rate at remote queue 
-            b_i_t = np.mean(b[b_idx:i_idx+1, :] + b_i, axis=0)
+            b_i_t = np.mean(b[b_idx:i_idx+1, :], axis=0)
 
-            d_i_t = Q_i_t/arrival_lambda + (1 - m)*1
+            d_i_t = Q_i_t/arrival_lambda + (1 - m) * 1 + m * 2
         
             for iuser, bt in enumerate(b_i_t): 
                 if m[iuser] == 1 and bt != 0: 
-                    d_i_t[iuser] = d_i_t[iuser] + m[iuser] *(2 + L_i_t[iuser]/bt)
+                    d_i_t[iuser] = m[iuser] *(L_i_t[iuser]/bt)
 
             # update the objective function
             f_val = f_val + np.sum(1/2*(scale_delay*d_i_t)**2 + scale_delay*d_i_t*(D[i_idx,:] - scale_delay*d_th))
 
             v_list.append(f_val)
             delay_list.append(d_i_t)
+            assert(d_i_t.all() > 0.2)
             
         # record the index of largest reward
         k_idx_his.append(np.argmin(v_list))
@@ -268,7 +270,7 @@ if __name__ == "__main__":
         # Obj[i_idx],rate[i_idx,:],energy[i_idx,:]  = r_list[k_idx_his[-1]]
         Obj[i_idx] = v_list[k_idx_his[-1]]
         delay[i_idx] = delay_list[k_idx_his[-1]]
-        tmp, a[i_idx,:],b[i_idx,:],c[i_idx,:], energy[i_idx, :], energy_uav[i_idx] = r_list[k_idx_his[-1]]
+        tmp, a[i_idx,:],b[i_idx,:], c[i_idx,:], energy[i_idx, :], energy_uav[i_idx] = r_list[k_idx_his[-1]]
 
         
 

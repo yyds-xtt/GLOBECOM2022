@@ -169,7 +169,7 @@ class MemoryDNN:
         plt.plot(np.arange(len(self.cost_his))*self.training_interval, self.cost_his)
         plt.ylabel('Training Cost')
         plt.grid()
-        plt.ylim((0, 1))
+        # plt.ylim((0, 1))
         plt.xlabel('Time Frames')
         plt.savefig(path_name)
         plt.show()
