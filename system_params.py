@@ -3,14 +3,14 @@ from utils import *
 # System parameters
 N = 10 # number of users
 
-time = 1000 # total simulation time
+time = 100 # total simulation time
 delta = mini(100) 
  
 T = int(time/delta) # number of TSs
 n = T         # number of time frames
 W = 1*mega(1) # Bandwidth mhz
 R = kilo(1) # packet size kb
-V = 1e5 # Lyapunov
+V = 1e6 # Lyapunov
 
 # channel model 
 H_uav = 50 # high of uav 
@@ -33,9 +33,9 @@ p_i_max = dBm(20)
 F = 500*R # CPU cycles / packet
 
 
-scale_delay = 1*1e2
-d_th = 5
-lambda_param = np.round(0.1*1e6/R)
+scale_delay = 18
+d_th = 1.5
+lambda_param = np.round(0.09*1e6/R)
 # the quantization mode could be 'OP' (Order-preserving) or 'KNN' or 'OPN' (Order-Preserving with noise)
 decoder_mode = 'OPN'
 Memory = 1024          # capacity of memory structure

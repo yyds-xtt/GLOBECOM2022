@@ -17,6 +17,7 @@ import pandas as pd
 
 # for tensorflow2
 from memoryTF2conv import MemoryDNN
+from Plot_figure import * 
 # from optimization import bisection
 from ResourceAllocation import Algo1_NUM
 from system_params import d_th, scale_delay, V
@@ -27,13 +28,6 @@ import time
 
 import os 
 
-def create_img_folder(): 
-    # path = f'./V={V},dth={d_th},lambda={lambda_param},T={T},W={W},scale_delay={scale_delay}, psi = {psi}/'
-    path = "{}/img/V ={:.2e},dth={:},lambda={:},T={:},W={:.2e},scale_delay={:}, psi = {:}, f_u ={:.2e}/".format(os.getcwd(),
-     V, d_th, lambda_param, T, W, scale_delay, psi, f_u_max)
-    os.makedirs(path, exist_ok=True)
-    print(f"Directory {os.getcwd()}")
-    return path
 
 def plot_drift(Q, L, D, E, name, rolling_intv=50): 
     import matplotlib.pyplot as plt
@@ -138,7 +132,7 @@ if __name__ == "__main__":
 
     Obj = np.zeros((T)) # objective values after solving problem (26)
     energy = np.zeros((T,N)) # energy consumption
-    energy_uav = np.zeros((T))
+    energy_uav = np.zeros((T, N))
     rate = np.zeros((T,N)) # achieved computation rate
     d_t = np.zeros((T, N)) 
     
@@ -238,7 +232,8 @@ if __name__ == "__main__":
             b_i_t = np.zeros(N)
             # avarage local queue 
 
-            b_idx = np.maximum(0, i_idx - 30) 
+            # b_idx = np.maximum(0, i_idx - 30) 
+            b_idx = 0
             Q_i_t = np.mean(Q[b_idx:i_idx+1, :], axis=0) 
             # average uav queue 
             L_i_t = np.mean(L[b_idx:i_idx+1, :], axis=0)
@@ -249,7 +244,7 @@ if __name__ == "__main__":
         
             for iuser, bt in enumerate(b_i_t): 
                 if m[iuser] == 1 and bt != 0: 
-                    d_i_t[iuser] = m[iuser] *(L_i_t[iuser]/bt)
+                    d_i_t[iuser] = m[iuser] * (L_i_t[iuser]/bt)
 
             # update the objective function
             f_val = f_val + np.sum(1/2*(scale_delay*d_i_t)**2 + scale_delay*d_i_t*(D[i_idx,:] - scale_delay*d_th))
@@ -270,12 +265,12 @@ if __name__ == "__main__":
         # Obj[i_idx],rate[i_idx,:],energy[i_idx,:]  = r_list[k_idx_his[-1]]
         Obj[i_idx] = v_list[k_idx_his[-1]]
         delay[i_idx] = delay_list[k_idx_his[-1]]
-        tmp, a[i_idx,:],b[i_idx,:], c[i_idx,:], energy[i_idx, :], energy_uav[i_idx] = r_list[k_idx_his[-1]]
+        tmp, a[i_idx,:],b[i_idx,:], c[i_idx,:], energy[i_idx, :], energy_uav[i_idx, :] = r_list[k_idx_his[-1]]
 
         
 
         # drifted energy 
-        weighted_energy[i_idx] = (np.sum(energy[i_idx, :]) + energy_uav[i_idx])*V
+        weighted_energy[i_idx] = (np.sum(energy[i_idx, :] + energy_uav[i_idx, :]*psi))
 
         print(f'local computation: a_i =', a[i_idx,:])
         print(f'offloading volume: b_i =', b[i_idx,:])
@@ -290,18 +285,18 @@ if __name__ == "__main__":
 
     
 
-    plot_rate(Q.sum(axis=1)/N, 100, 'User queue length', name=path+'UserQueue')
-    plot_rate(L.sum(axis=1)/N, 100, 'UAV queue length', name=path+'UAVQueue')
-    plot_rate(energy.sum(axis=1)/N/delta*1000, 100, 'Power consumption (mW)', name=path+'AvgPower')
-    plot_rate(delay.sum(axis=1)/N, 100, 'Latency (TS)',name=path+'AvgDelay')
-    plot_rate(energy_uav/N/delta*1000, 100, 'UAV power consumption (mW)', name=path+'AvgPowerUAV')
+    plot_rate(Q.sum(axis=1)/N, 200, 'User queue length', name=path+'UserQueue')
+    plot_rate(L.sum(axis=1)/N, 200, 'UAV queue length', name=path+'UAVQueue')
+    plot_rate(energy.sum(axis=1)/N/delta*1000, 200, 'Power consumption (mW)', name=path+'AvgPower')
+    plot_rate(delay.sum(axis=1)/N, 200, 'Latency (TS)',name=path+'AvgDelay')
+    plot_rate(np.sum(energy_uav, axis=1)/delta*1000, 200, 'UAV power consumption (mW)', name=path+'AvgPowerUAV')
 
-    plot_drift(drift_Q, drift_L, drift_D, weighted_energy, name=path+"drift")
+    plot_drift(drift_Q, drift_L, drift_D, weighted_energy*V, name=path+"drift")
     
     print(f"Mean drift local queue: {np.mean(drift_Q)}")
     print(f"Mean drift uav queue: {np.mean(drift_L)}")
     print(f"Mean drift delay: {np.mean(drift_D)}")
-    print(f"Mean drift energy: {np.mean(weighted_energy)}")
+    print(f"Mean drift energy: {np.mean(weighted_energy)*V}")
 
     print('Average time per channel:%s'%(total_time/T))
 
@@ -309,11 +304,11 @@ if __name__ == "__main__":
     aQ = np.mean(Q, axis=1)
     aL = np.mean(L, axis=1)
     aE_i = np.mean(energy, axis=1)
-    aE_u = energy_uav
+    aE_u = np.mean(energy_uav, axis=1)
     adelay = np.mean(delay, axis=1)
     
-    sio.savemat('./result_%d.mat'%N, {'input_h': channel/CHFACT,'data_arrival':dataA,'local_queue':Q,'uav_queue':L,'off_mode':mode_his,'energy_consumption':energy,'delay':delay,'objective':Obj})
-    df = pd.DataFrame({'local_queue':aQ,'uav_queue':aL,'energy_user':aE_i,'energy_uav':aE_u, 'delay':adelay})
+    # sio.savemat('./result_%d.mat'%N, {'input_h': channel/CHFACT,'data_arrival':dataA,'local_queue':Q,'uav_queue':L,'off_mode':mode_his,'energy_consumption':energy,'delay':delay,'objective':Obj})
+    df = pd.DataFrame({'local_queue':aQ,'uav_queue':aL,'energy_user':aE_i,'energy_uav':aE_u, 'delay':adelay, 'weightedE':weighted_energy})
     name= path + 'V1.csv'
     df.to_csv(name, index=False)
     # return quequeue_rsue, energy

@@ -26,8 +26,8 @@ def Algo1_NUM(mode, h, Q, L, V=20):
     N = len(Q)
 
     energy = np.zeros((N))
-    energy_uav_arr = np.zeros((N))
-    energy_uav = 0 
+    energy_uav = np.zeros((N))
+    # energy_uav = 0 
 
     f0_val = 0
     a_i = np.zeros((N))
@@ -100,10 +100,10 @@ def Algo1_NUM(mode, h, Q, L, V=20):
             # optimize cpu frequency 
             f_hat = np.minimum(f_u_max, l1[i]*F/delta)
             f1[i] = np.minimum(np.sqrt(l1[i]/3/F/V/kappa/psi), f_hat)
-            energy_uav_arr[tmp_id] = kappa*(f1[i]**3)*delta
-            energy[tmp_id] += psi * energy_uav_arr[tmp_id]
-            f0_val = f0_val + V*psi*energy_uav_arr[tmp_id] - l1[i]*f1[i]*delta/F
-            energy_uav += energy_uav_arr[tmp_id]
+            energy_uav[tmp_id] = kappa*(f1[i]**3)*delta
+            # energy[tmp_id] += psi * energy_uav_arr[tmp_id]
+            f0_val = f0_val + V*psi*energy_uav[tmp_id] - l1[i]*f1[i]*delta/F
+            # energy_uav += energy_uav_arr[tmp_id]
 
         # update offloading volume 
         b_i[idx1] = b1
