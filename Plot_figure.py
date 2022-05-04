@@ -20,7 +20,6 @@ def plot_scale_factor():
     print('create img foler')
     # dth_arr = [2.5, 3, 4, 5, 6, 7, 8, 9]
 
-
     scale_delay_arr = np.asarray([0.01, 0.1, 1.0, 10, 100, 1000])*1e2
     delay_arr = np.zeros_like(scale_delay_arr)
     energy_arr = np.zeros_like(scale_delay_arr)
@@ -59,7 +58,8 @@ def plot_scale_factor():
 
 def plot_delay():
     csv_name = "V1.csv"
-    dth_arr = [1.0, 2.5, 3, 4]
+    dth_arr = [1.5, 2.0, 3.0, 3.5, 4, 5, 8]
+    # dth_arr = [2.5, 3, 4, 5, 6, 7, 8]
     delay = np.zeros_like(dth_arr)
     user_energy = np.zeros_like(dth_arr)
     uav_energy = np.zeros_like(dth_arr)
@@ -72,15 +72,15 @@ def plot_delay():
         file = path + csv_name
         data = pd.read_csv(file)
         delay[idx] = np.mean(data.delay)
-        user_energy[idx] = np.mean(data.energy_user)*1000
-        uav_energy[idx] = np.mean(data.energy_uav)*1000
-        weighted_energy[idx] = np.mean(data.weighted_energy)*1000
+        user_energy[idx] = np.mean(data.energy_user)*1000/delta
+        uav_energy[idx] = np.mean(data.energy_uav)*1000/delta
+        weighted_energy[idx] = np.mean(data.weightedE)*1000/delta
         
-    plt.plot(dth_arr, weighted_energy, label='Weighted energy')
-    plt.plot(dth_arr, uav_energy, label='UAV energy')
-    plt.plot(dth_arr, user_energy, label='User energy')
+    plt.plot(dth_arr, weighted_energy, '-o', label='Weighted power')
+    plt.plot(dth_arr, uav_energy, '-o', label='UAV power')
+    plt.plot(dth_arr, user_energy, '-o', label='User power')
 
-    plt.ylabel('Energy Consumption (mJ)')
+    plt.ylabel('Power Consumption (mW)')
     plt.xlabel('Delay threshold (TS)')
     plt.grid()
     plt.legend()
@@ -96,4 +96,5 @@ def plot_delay():
     plt.savefig('delay_vs_dth.png')
     plt.show()
 
-plot_delay()
+# plot_delay()
+# plot_scale_factor()
