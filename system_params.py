@@ -1,7 +1,7 @@
 from utils import *
 
 # System parameters
-N = 5 # number of users
+N = 10 # number of users
 
 time = 50 # total simulation time
 delta = mini(100) 
@@ -19,6 +19,7 @@ b_LOS = 0.16
 g0 = -50 # channel gain reference dB 
 xi = 0.2 # attenuation effect 
 gamma = 2.7601 # path loss exponent 
+N0 = dBm(-174)
 
 mu_gain = 0 # dB fading channel power gain 
 var_gain = 4 # fading channel variance 

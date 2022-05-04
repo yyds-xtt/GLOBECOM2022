@@ -1,6 +1,7 @@
 from cProfile import label
 import numpy as np 
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
+from psutil import users 
 
 from User2 import User
 from system_params import *
@@ -15,11 +16,11 @@ class Server:
         self.users = []
         self.c = np.zeros((T, N))
         self.b = np.zeros((T, N))
-        self.idx = 0 
+        self.ts = 0 
         self.init_user(arrival_rate)
 
     def update_queue(self, idx): 
-        # idx = self.idx 
+        idx = self.ts 
         # UAV queue update 
         self.L[idx + 1, :] = self.L[idx, :] - self.c[idx, :] + self.b[idx, :]
         # user queue update 
@@ -43,6 +44,53 @@ class Server:
 
         plt.savefig(path + 'dataA.png'.format(iuser))
         plt.show()
+
+    def opt_offloading_volume(self, mode, opt = 'ebw'):
+        # input
+        its = self.ts 
+        idx1 = np.where(mode == 1)[0]
+
+        # update local and remote queue of offloading user 
+        Qt = np.array([user.Q[its, 0] for user in self.users])[idx1]
+        Lt = self.L[its, idx1]
+        gain = np.array([user.gain[its, 0] for user in self.users])[idx1]
+
+        # Qt1 = Qt[idx1]
+        # Lt1 = Lt[idx1]
+
+
+        # optimize bandwidth 
+        if opt == 'ebw': 
+            bwidth = self.opt_bwidth_ebw(self, mode=mode)[idx1]
+        else:
+            bwidth = self.opt_bwidth_lawbert_w(mode=mode)[idx1]
+
+        # for offloading users
+        b_hat = np.round(bw*delta/R*np.log2(h*p_i_max/N0/bw) for (h, bw) in zip(gain, bwidth))
+
+        b_hat = np.minimum(Qt, b_hat)
+        
+
+
+    
+    def opt_bwidth_ebw(self, mode): 
+        idx1 = np.where(mode == 1)[0]
+        no_offloading_users = len(idx1)
+        bwidth = np.zeros((N, 1))
+        bwidth[idx1] = W/no_offloading_users
+
+        return bwidth
+
+    def opt_bwidth_lawbert_w(self, mode): 
+        
+        bwidth = np.zeros((N, 1))
+        return bwidth
+         
+
+
+
+
+
     
     def running(self): 
         for idx in range(T): 
