@@ -21,21 +21,21 @@ class User():
         self.gain = np.zeros((T, 1))
         self.idx = 0
         
-    def update_queue(self, iidx): 
-        # iidx = self.idx 
+    def update_queue(self): 
+        iidx = self.idx 
         if iidx > 0: 
             self.Q[iidx, 0] = self.Q[iidx - 1, 0] - self.a[iidx - 1, 0] - self.b[iidx - 1, 0] + self.data_A[iidx - 1, 0]
         return self.Q[iidx, 0]
 
     def next_slot(self): 
-        # self.update_queue()
+        self.update_queue()
         # self.update_location()
         self.update_gain()
         self.idx += 1 
         pass 
 
     def update_gain(self): 
-        self.gain[self.idx, 0] = channelModel2.channel_model()
+        self.gain[self.idx, 0] = dB(channelModel2.channel_model())
 
     def optimize_freq(self): 
         Qt = self.Q[self.idx]

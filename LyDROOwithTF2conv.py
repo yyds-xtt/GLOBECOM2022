@@ -162,6 +162,7 @@ if __name__ == "__main__":
             # K = 40
 
         i_idx = i
+        K = 100
 
 
 
@@ -290,6 +291,7 @@ if __name__ == "__main__":
     plot_rate(energy.sum(axis=1)/N/delta*1000, 200, 'Power consumption (mW)', name=path+'AvgPower')
     plot_rate(delay.sum(axis=1)/N, 200, 'Latency (TS)',name=path+'AvgDelay')
     plot_rate(np.sum(energy_uav, axis=1)/delta*1000, 200, 'UAV power consumption (mW)', name=path+'AvgPowerUAV')
+    
 
     plot_drift(drift_Q, drift_L, drift_D, weighted_energy*V, name=path+"drift")
     
@@ -305,10 +307,17 @@ if __name__ == "__main__":
     aL = np.mean(L, axis=1)
     aE_i = np.mean(energy, axis=1)
     aE_u = np.mean(energy_uav, axis=1)
+    # aweightedE = np.mean(weighted_energy, axis=1)
+    aweightedE = weighted_energy/N 
     adelay = np.mean(delay, axis=1)
+    aOffloadingb = np.mean(b, axis=1)
+    aLocalA = np.mean(a, axis=1)
     
     # sio.savemat('./result_%d.mat'%N, {'input_h': channel/CHFACT,'data_arrival':dataA,'local_queue':Q,'uav_queue':L,'off_mode':mode_his,'energy_consumption':energy,'delay':delay,'objective':Obj})
-    df = pd.DataFrame({'local_queue':aQ,'uav_queue':aL,'energy_user':aE_i,'energy_uav':aE_u, 'delay':adelay, 'weightedE':weighted_energy})
+    df = pd.DataFrame({'local_queue':aQ,'uav_queue':aL,
+                        'energy_user':aE_i,'energy_uav':aE_u, 
+                        'delay':adelay, 'weightedE':aweightedE, 
+                        'off_b': aOffloadingb, 'local_a': aLocalA})
     name= path + 'V1.csv'
     df.to_csv(name, index=False)
     # return quequeue_rsue, energy
