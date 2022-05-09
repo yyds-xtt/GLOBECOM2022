@@ -245,7 +245,7 @@ if __name__ == "__main__":
         
             for iuser, bt in enumerate(b_i_t): 
                 if m[iuser] == 1 and bt != 0: 
-                    d_i_t[iuser] = m[iuser] * (L_i_t[iuser]/bt)
+                    d_i_t[iuser] += L_i_t[iuser]/bt
 
             # update the objective function
             f_val = f_val + np.sum(1/2*(scale_delay*d_i_t)**2 + scale_delay*d_i_t*(D[i_idx,:] - scale_delay*d_th))
@@ -307,17 +307,17 @@ if __name__ == "__main__":
     aL = np.mean(L, axis=1)
     aE_i = np.mean(energy, axis=1)
     aE_u = np.mean(energy_uav, axis=1)
-    # aweightedE = np.mean(weighted_energy, axis=1)
-    aweightedE = weighted_energy/N 
+    aweightedE = weighted_energy/N
     adelay = np.mean(delay, axis=1)
     aOffloadingb = np.mean(b, axis=1)
-    aLocalA = np.mean(a, axis=1)
+    aLocala = np.mean(a, axis=1)
+    aUAVc = np.mean(c, axis=1)
     
     # sio.savemat('./result_%d.mat'%N, {'input_h': channel/CHFACT,'data_arrival':dataA,'local_queue':Q,'uav_queue':L,'off_mode':mode_his,'energy_consumption':energy,'delay':delay,'objective':Obj})
     df = pd.DataFrame({'local_queue':aQ,'uav_queue':aL,
                         'energy_user':aE_i,'energy_uav':aE_u, 
                         'delay':adelay, 'weightedE':aweightedE, 
-                        'off_b': aOffloadingb, 'local_a': aLocalA})
+                        'off_b': aOffloadingb, 'local_a': aLocala, 'remote_c': aUAVc})
     name= path + 'V1.csv'
     df.to_csv(name, index=False)
     # return quequeue_rsue, energy
