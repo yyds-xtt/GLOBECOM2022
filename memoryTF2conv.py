@@ -16,6 +16,8 @@ from numpy.random import default_rng
 rng = default_rng()
 
 # DNN network for memory
+
+kn_size = 7
 class MemoryDNN:
     def __init__(
         self,
@@ -49,11 +51,11 @@ class MemoryDNN:
         self._build_net()
 
     def _build_net(self):
-        kn_size = 4
+        scaled_kn_size = 2
         self.model = keras.Sequential([
-                    layers.Conv1D(32, kn_size, activation='relu',input_shape=[int(self.net[0]/4),kn_size]), # first Conv1D with 32 channels and kearnal size 3
+                    layers.Conv1D(32, kn_size, activation='relu',input_shape=[int(self.net[0]/kn_size),kn_size]), # first Conv1D with 32 channels and kearnal size 3
                     layers.Conv1D(64, 3, activation='relu'), # second Conv1D with 32 channels and kearnal size 3
-                    layers.Conv1D(64, 3, activation='relu'), # second Conv1D with 32 channels and kearnal size 3
+                    layers.Conv1D(64, scaled_kn_size, activation='relu'), # second Conv1D with 32 channels and kearnal size 3
                     layers.Flatten(),
                     layers.Dense(64, activation='relu'),
                     layers.Dense(self.net[-1], activation='sigmoid')
@@ -88,7 +90,7 @@ class MemoryDNN:
         batch_memory = self.memory[sample_index, :]
         
         h_train = batch_memory[:, 0: self.net[0]]
-        h_train = h_train.reshape(self.batch_size,int(self.net[0]/4),4)
+        h_train = h_train.reshape(self.batch_size,int(self.net[0]/kn_size),kn_size)
         m_train = batch_memory[:, self.net[0]:]
         
         # print(h_train)          # (128, 10)
@@ -102,19 +104,21 @@ class MemoryDNN:
 
     def decode(self, h, k = 1, mode = 'OP'):
         # to have batch dimension when feed into tf placeholder
-        h=h.reshape(10,4)
+        h=h.reshape(10,kn_size)
         h = h[np.newaxis, :]
 
         m_pred = self.model.predict(h)
+        m_list = []
 
         if mode == 'OP':
-            return self.knm(m_pred[0], k)
+            m_list = self.knm(m_pred[0], k)
         elif mode =='KNN':
-            return self.knn(m_pred[0], k)
+            m_list =  self.knn(m_pred[0], k)
         elif mode =='OPN':
-            return self.opn(m_pred[0], k)
+            m_list =  self.opn(m_pred[0], k)
         else:
             print("The action selection must be 'OP' or 'KNN'")
+        return m_list
     
     # def knm(self, m, k = 1):
     #     # return k order-preserving binary actions

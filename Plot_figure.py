@@ -103,4 +103,4 @@ def plot_delay():
     plt.show()
 
 
-plot_delay()
+# plot_delay()

@@ -15,6 +15,11 @@ import scipy.io as sio                     # import scipy.io for .mat file I/
 import numpy as np                         # import numpy
 import pandas as pd 
 
+from pandas import DataFrame as df 
+
+from sklearn.preprocessing import MinMaxScaler
+
+
 # for tensorflow2
 from memoryTF2conv import MemoryDNN
 from Plot_figure import * 
@@ -27,6 +32,18 @@ from User import *
 import time
 
 import os 
+
+def preprocessing(data_in):
+    # create scaler 
+    scaler = MinMaxScaler()
+    data = np.reshape(data_in, (-1, 1))
+    # fit scaler on data 
+    scaler.fit(data)
+    normalized = scaler.transform(data)
+    normalized = normalized.reshape(1, -1)
+    return normalized 
+
+no_input_cnn = 7
 
 
 def plot_drift(Q, L, D, E, name, rolling_intv=50): 
@@ -117,7 +134,7 @@ if __name__ == "__main__":
     # for iuser in users: 
     #     iuser.generate_channel_gain()
     
-    mem = MemoryDNN(net = [N*4, 256, 128, N],
+    mem = MemoryDNN(net = [N*no_input_cnn, 256, 128, N],
                     learning_rate = 0.01,
                     training_interval=20,
                     batch_size=128,
@@ -193,22 +210,30 @@ if __name__ == "__main__":
             
 
         # scale Q and Y to 1
-        h_norm = np.linalg.norm(h)
+        # h_norm = np.linalg.norm(h)
         
-        q_norm = np.linalg.norm(Q[i_idx,:])
-        l_norm = np.linalg.norm(L[i_idx,:])
-        d_norm = np.linalg.norm(D[i_idx,:])
+        # q_norm = np.linalg.norm(Q[i_idx,:])
+        # l_norm = np.linalg.norm(L[i_idx,:])
+        # d_norm = np.linalg.norm(D[i_idx,:])
 
-        if q_norm == 0: 
-            q_norm = 1 
-        if l_norm == 0: 
-            l_norm = 1 
-        if d_norm == 0: 
-            d_norm = 1 
-        
-        
+        # if q_norm == 0: 
+        #     q_norm = 1 
+        # if l_norm == 0: 
+        #     l_norm = 1 
+        # if d_norm == 0: 
+        #     d_norm = 1 
+        # nn_input =np.vstack((h, Q[i_idx,:]/q_norm, L[i_idx,:]/l_norm,D[i_idx, :]/d_norm)).transpose().flatten()
+        b_idx = np.maximum(0, i_idx - 30)
+        h_normalized = preprocessing(h*CHFACT)
+        Q_normalized = preprocessing(Q[i_idx,:])
+        L_normalized = preprocessing(L[i_idx,:])
+        D_normalized = preprocessing(D[i_idx, :])
+        Q_ava_normalized = preprocessing(np.mean(Q[b_idx:i_idx+1, :], axis=0))
+        L_ava_normalized = preprocessing(np.mean(L[b_idx:i_idx+1, :], axis=0))
+        b_ava_normalized = preprocessing(np.mean(b[b_idx:i_idx+1, :], axis=0))
+        nn_input =np.vstack((h_normalized, Q_normalized, L_normalized, D_normalized, Q_ava_normalized, L_ava_normalized, b_ava_normalized)).transpose().flatten()
 
-        nn_input =np.vstack((h/h_norm, Q[i_idx,:]/q_norm, L[i_idx,:]/l_norm,D[i_idx, :]/d_norm)).transpose().flatten()
+
 
 
         # 1) 'Actor module' of LyDROO
@@ -233,8 +258,8 @@ if __name__ == "__main__":
             b_i_t = np.zeros(N)
             # avarage local queue 
 
-            # b_idx = np.maximum(0, i_idx - 30) 
-            b_idx = 0
+            b_idx = np.maximum(0, i_idx - 30) 
+            # b_idx = 0
             Q_i_t = np.mean(Q[b_idx:i_idx+1, :], axis=0) 
             # average uav queue 
             L_i_t = np.mean(L[b_idx:i_idx+1, :], axis=0)
@@ -290,7 +315,7 @@ if __name__ == "__main__":
     plot_rate(L.sum(axis=1)/N, 200, 'UAV queue length', name=path+'UAVQueue')
     plot_rate(energy.sum(axis=1)/N/delta*1000, 200, 'Power consumption (mW)', name=path+'AvgPower')
     plot_rate(delay.sum(axis=1)/N, 200, 'Latency (TS)',name=path+'AvgDelay')
-    plot_rate(np.sum(energy_uav, axis=1)/delta*1000, 200, 'UAV power consumption (mW)', name=path+'AvgPowerUAV')
+    plot_rate(np.sum(energy_uav, axis=1)/delta*1000/N, 200, 'UAV power consumption (mW)', name=path+'AvgPowerUAV')
     
 
     plot_drift(drift_Q, drift_L, drift_D, weighted_energy*V, name=path+"drift")
@@ -322,3 +347,5 @@ if __name__ == "__main__":
     df.to_csv(name, index=False)
     # return quequeue_rsue, energy
     print('completed!')
+
+
