@@ -106,16 +106,18 @@ class MemoryDNN:
         h = h[np.newaxis, :]
 
         m_pred = self.model.predict(h)
+        m_list = []
 
         if mode == 'OP':
-            return self.knm(m_pred[0], k)
+            m_list = self.knm(m_pred[0], k)
         elif mode =='KNN':
-            return self.knn(m_pred[0], k)
+            m_list = self.knn(m_pred[0], k)
         elif mode =='OPN':
-            return self.opn(m_pred[0], k)
+            m_list = self.opn(m_pred[0], k)
         else:
             print("The action selection must be 'OP' or 'KNN'")
-    
+        return np.unique(m_list, axis = 0)
+        # return m_list
     # def knm(self, m, k = 1):
     #     # return k order-preserving binary actions
     #     m_list = []

@@ -63,8 +63,7 @@ def Algo1_NUM(mode, h, Q, L, V=20):
     idx1 = np.where(mode == 1)[0]
     M1 = len(idx1)
     f1_val = 0
-    f2_val = 0
-    f_iU = np.zeros((N))
+
     b_i = np.zeros((N))
     c_i = np.zeros((N))
 

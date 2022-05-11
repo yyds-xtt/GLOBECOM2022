@@ -162,6 +162,7 @@ if __name__ == "__main__":
             # K = 40
 
         i_idx = i
+        K = 100
 
 
 
@@ -189,9 +190,6 @@ if __name__ == "__main__":
             drift_L[i_idx] = 1/2 *np.sum((L[i_idx,:] - L[i_idx - 1,:])**2)
             drift_D[i_idx] = 1/2 *np.sum((D[i_idx,:] - D[i_idx - 1,:])**2)
 
-            
-
-        # scale Q and Y to 1
         h_norm = np.linalg.norm(h)
         
         q_norm = np.linalg.norm(Q[i_idx,:])
@@ -232,8 +230,8 @@ if __name__ == "__main__":
             b_i_t = np.zeros(N)
             # avarage local queue 
 
-            # b_idx = np.maximum(0, i_idx - 30) 
-            b_idx = 0
+            b_idx = np.maximum(0, i_idx - 30) 
+            # b_idx = 0
             Q_i_t = np.mean(Q[b_idx:i_idx+1, :], axis=0) 
             # average uav queue 
             L_i_t = np.mean(L[b_idx:i_idx+1, :], axis=0)
@@ -244,7 +242,7 @@ if __name__ == "__main__":
         
             for iuser, bt in enumerate(b_i_t): 
                 if m[iuser] == 1 and bt != 0: 
-                    d_i_t[iuser] = m[iuser] * (L_i_t[iuser]/bt)
+                    d_i_t[iuser] += L_i_t[iuser]/bt
 
             # update the objective function
             f_val = f_val + np.sum(1/2*(scale_delay*d_i_t)**2 + scale_delay*d_i_t*(D[i_idx,:] - scale_delay*d_th))
@@ -275,7 +273,8 @@ if __name__ == "__main__":
         print(f'local computation: a_i =', a[i_idx,:])
         print(f'offloading volume: b_i =', b[i_idx,:])
         print(f'remote computation: c_i =', c[i_idx,:])
-        print(f'remote computation: energy_i =', energy[i_idx,:])
+        print(f'user energy: energy_i =', energy[i_idx,:])
+        print(f'uav energy: energy_u =', energy_uav[i_idx,:])
         print(f'fvalue = {v_list[k_idx_his[-1]]}')
 
 
@@ -289,7 +288,8 @@ if __name__ == "__main__":
     plot_rate(L.sum(axis=1)/N, 200, 'UAV queue length', name=path+'UAVQueue')
     plot_rate(energy.sum(axis=1)/N/delta*1000, 200, 'Power consumption (mW)', name=path+'AvgPower')
     plot_rate(delay.sum(axis=1)/N, 200, 'Latency (TS)',name=path+'AvgDelay')
-    plot_rate(np.sum(energy_uav, axis=1)/delta*1000, 200, 'UAV power consumption (mW)', name=path+'AvgPowerUAV')
+    plot_rate(np.sum(energy_uav, axis=1)/N/delta*1000, 200, 'UAV power consumption (mW)', name=path+'AvgPowerUAV')
+    
 
     plot_drift(drift_Q, drift_L, drift_D, weighted_energy*V, name=path+"drift")
     
@@ -305,10 +305,18 @@ if __name__ == "__main__":
     aL = np.mean(L, axis=1)
     aE_i = np.mean(energy, axis=1)
     aE_u = np.mean(energy_uav, axis=1)
+    aweightedE = weighted_energy/N
     adelay = np.mean(delay, axis=1)
+    aOffloadingb = np.mean(b, axis=1)
+    aLocala = np.mean(a, axis=1)
+    aUAVc = np.mean(c, axis=1)
     
     # sio.savemat('./result_%d.mat'%N, {'input_h': channel/CHFACT,'data_arrival':dataA,'local_queue':Q,'uav_queue':L,'off_mode':mode_his,'energy_consumption':energy,'delay':delay,'objective':Obj})
-    df = pd.DataFrame({'local_queue':aQ,'uav_queue':aL,'energy_user':aE_i,'energy_uav':aE_u, 'delay':adelay, 'weightedE':weighted_energy})
+    df = pd.DataFrame(
+        {'local_queue':aQ,'uav_queue':aL,                
+        'energy_user':aE_i,'energy_uav':aE_u, 
+        'delay':adelay, 'weightedE':aweightedE, 
+        'off_b': aOffloadingb, 'local_a': aLocala, 'remote_c': aUAVc})
     name= path + 'V1.csv'
     df.to_csv(name, index=False)
     # return quequeue_rsue, energy

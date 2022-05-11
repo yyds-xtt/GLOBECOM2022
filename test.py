@@ -68,15 +68,22 @@ x0 = np.array([1.3, 0.7, 0.8, 1.9, 1.2])
 # print(value)
 # print('Simulation finish!')
 
-L = np.random.randint(10, 15, (3, 5))
-b = np.random.randint(2, 4, (3, 5))
+# L = np.random.randint(10, 15, (3, 5))
+# b = np.random.randint(2, 4, (3, 5))
 
-L_t = np.mean(L, axis=0)
-b_t = np.mean(b, axis=0)
+# L_t = np.mean(L, axis=0)
+# b_t = np.mean(b, axis=0)
 
-d = L_t/b_t 
+# d = L_t/b_t 
 
-print('simulation completed')
+# print('simulation completed')
+
+
+import numpy as np
+s = np.random.poisson(4, 10000)
+import matplotlib.pyplot as plt
+count, bins, ignored = plt.hist(s, 14, density=True)
+plt.show()
 
 
 
