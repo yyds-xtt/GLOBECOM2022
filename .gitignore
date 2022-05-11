@@ -131,4 +131,9 @@ dmypy.json
 img/
 img_old/
 
+# img/
+.DS_Store
 .vscode/
+
+img_new/
+*.mat 

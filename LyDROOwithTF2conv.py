@@ -15,6 +15,11 @@ import scipy.io as sio                     # import scipy.io for .mat file I/
 import numpy as np                         # import numpy
 import pandas as pd 
 
+from pandas import DataFrame as df 
+
+from sklearn.preprocessing import MinMaxScaler
+
+
 # for tensorflow2
 from memoryTF2conv import MemoryDNN
 from Plot_figure import * 
@@ -27,6 +32,18 @@ from User import *
 import time
 
 import os 
+
+def preprocessing(data_in):
+    # create scaler 
+    scaler = MinMaxScaler()
+    data = np.reshape(data_in, (-1, 1))
+    # fit scaler on data 
+    scaler.fit(data)
+    normalized = scaler.transform(data)
+    normalized = normalized.reshape(1, -1)
+    return normalized 
+
+no_input_cnn = 7
 
 
 def plot_drift(Q, L, D, E, name, rolling_intv=50): 
@@ -117,7 +134,7 @@ if __name__ == "__main__":
     # for iuser in users: 
     #     iuser.generate_channel_gain()
     
-    mem = MemoryDNN(net = [N*4, 256, 128, N],
+    mem = MemoryDNN(net = [N*no_input_cnn, 256, 128, N],
                     learning_rate = 0.01,
                     training_interval=20,
                     batch_size=128,
@@ -190,22 +207,33 @@ if __name__ == "__main__":
             drift_L[i_idx] = 1/2 *np.sum((L[i_idx,:] - L[i_idx - 1,:])**2)
             drift_D[i_idx] = 1/2 *np.sum((D[i_idx,:] - D[i_idx - 1,:])**2)
 
-        h_norm = np.linalg.norm(h)
-        
-        q_norm = np.linalg.norm(Q[i_idx,:])
-        l_norm = np.linalg.norm(L[i_idx,:])
-        d_norm = np.linalg.norm(D[i_idx,:])
+            
 
-        if q_norm == 0: 
-            q_norm = 1 
-        if l_norm == 0: 
-            l_norm = 1 
-        if d_norm == 0: 
-            d_norm = 1 
+        # scale Q and Y to 1
+        # h_norm = np.linalg.norm(h)
         
-        
+        # q_norm = np.linalg.norm(Q[i_idx,:])
+        # l_norm = np.linalg.norm(L[i_idx,:])
+        # d_norm = np.linalg.norm(D[i_idx,:])
 
-        nn_input =np.vstack((h/h_norm, Q[i_idx,:]/q_norm, L[i_idx,:]/l_norm,D[i_idx, :]/d_norm)).transpose().flatten()
+        # if q_norm == 0: 
+        #     q_norm = 1 
+        # if l_norm == 0: 
+        #     l_norm = 1 
+        # if d_norm == 0: 
+        #     d_norm = 1 
+        # nn_input =np.vstack((h, Q[i_idx,:]/q_norm, L[i_idx,:]/l_norm,D[i_idx, :]/d_norm)).transpose().flatten()
+        b_idx = np.maximum(0, i_idx - 30)
+        h_normalized = preprocessing(h*CHFACT)
+        Q_normalized = preprocessing(Q[i_idx,:])
+        L_normalized = preprocessing(L[i_idx,:])
+        D_normalized = preprocessing(D[i_idx, :])
+        Q_ava_normalized = preprocessing(np.mean(Q[b_idx:i_idx+1, :], axis=0))
+        L_ava_normalized = preprocessing(np.mean(L[b_idx:i_idx+1, :], axis=0))
+        b_ava_normalized = preprocessing(np.mean(b[b_idx:i_idx+1, :], axis=0))
+        nn_input =np.vstack((h_normalized, Q_normalized, L_normalized, D_normalized, Q_ava_normalized, L_ava_normalized, b_ava_normalized)).transpose().flatten()
+
+
 
 
         # 1) 'Actor module' of LyDROO

@@ -10,12 +10,12 @@ from utils import *
 
 def channel_model():  
     '''
-    generate channel gain in dB of N users 
+    generate channel gain in dB of 1 user 
     ''' 
-    dist = np.random.randint(10, 70, (N))
+    dist = np.random.randint(10, 100)
 
     theta = np.arctan(H_uav/dist)
-    fading = np.random.normal(mu_gain, sigma_gain, (N))
+    fading = np.random.normal(mu_gain, sigma_gain)
     # print(fading)
 
     p_LOS = 1./(1 + a_LOS*np.exp(-b_LOS*(theta - a_LOS)))

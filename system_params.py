@@ -8,7 +8,7 @@ delta = mini(100)
  
 T = int(time/delta) # number of TSs
 n = T         # number of time frames
-W = 1*mega(1) # Bandwidth mhz
+W = mega(1) # Bandwidth mhz
 R = kilo(1) # packet size kb
 V = 2*1e4 # Lyapunov
 
