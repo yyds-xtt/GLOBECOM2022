@@ -129,5 +129,6 @@ dmypy.json
 .pyre/
 
 img/
+img_old/
 
 .vscode/
