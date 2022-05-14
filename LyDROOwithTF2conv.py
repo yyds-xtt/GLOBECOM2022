@@ -25,9 +25,12 @@ from memoryTF2conv import MemoryDNN
 from Plot_figure import * 
 # from optimization import bisection
 from ResourceAllocation import Algo1_NUM
+
 from system_params import d_th, scale_delay, V
-from ChannelModel import *
+import channelModel2
+import gen_arrival_tasks
 from User import *
+from utils import * 
 
 import time
 
@@ -45,56 +48,18 @@ def preprocessing(data_in):
 
 no_input_cnn = 7
 
+np.set_printoptions(precision=2)
 
-def plot_drift(Q, L, D, E, name, rolling_intv=50): 
-    import matplotlib.pyplot as plt
-    import pandas as pd
-    import matplotlib as mpl
+def gen_actions_bf(no_users = 5): 
+    import itertools
+    actions = np.array(list(itertools.product([0, 1], repeat=no_users))) # (32, 5)
 
-    # mpl.style.use('seaborn')
-    fig, ax = plt.subplots(figsize=(8,8))
-    plt.grid()
-    plt.xlim([1, len(Q)+1])
-
-    rate_array = np.asarray(Q)
-    df = pd.DataFrame(Q)
-    # plt.plot(np.arange(T), Q, np.arange(T), L, np.arange(T), D, np.arange(T), E)
-    plt.plot(np.arange(len(rate_array))+1, np.hstack(df.rolling(rolling_intv, min_periods=1).mean().values))
-
-    df = pd.DataFrame(L)
-    plt.plot(np.arange(len(rate_array))+1, np.hstack(df.rolling(rolling_intv, min_periods=1).mean().values))
-    df = pd.DataFrame(D)
-    plt.plot(np.arange(len(rate_array))+1, np.hstack(df.rolling(rolling_intv, min_periods=1).mean().values))
-    df = pd.DataFrame(E)
-    plt.plot(np.arange(len(rate_array))+1, np.hstack(df.rolling(rolling_intv, min_periods=1).mean().values))
+    return actions
 
 
-
-    plt.xlabel('Time Frames')
-    plt.legend(['Q','L', 'D', 'E'])
-    plt.savefig(name)
-    plt.show()
-
-
-def plot_rate( rate_his, rolling_intv = 50, ylabel='Normalized Computation Rate', name='Average queue length'):
-    import matplotlib.pyplot as plt
-    import pandas as pd
-    import matplotlib as mpl
-
-    rate_array = np.asarray(rate_his)
-    df = pd.DataFrame(rate_his)
-
-
-    # mpl.style.use('seaborn')
-    # fig, ax = plt.subplots(figsize=(15,8))
-    plt.grid()
-    plt.plot(np.arange(len(rate_array))+1, rate_array)
-    plt.plot(np.arange(len(rate_array))+1, np.hstack(df.rolling(rolling_intv, min_periods=1).mean().values), 'b')
-    # plt.fill_between(np.arange(len(rate_array))+1, np.hstack(df.rolling(rolling_intv, min_periods=1).min()[0].values), np.hstack(df.rolling(rolling_intv, min_periods=1).max()[0].values), color = 'b', alpha = 0.2)
-    plt.ylabel(ylabel)
-    plt.xlabel('Time Frames')
-    plt.savefig(name)
-    plt.show()
+if comparison_flag == False: 
+    channelModel2.gen_channel_gain()
+    gen_arrival_tasks.gen_arrival_tasks()
 
 if __name__ == "__main__":
     '''
@@ -110,13 +75,8 @@ if __name__ == "__main__":
 
     K = N                   # initialize K = N
 
-    arrival_lambda = lambda_param*np.ones((N)) # 1.5 Mbps per user
 
     print('#user = %d, #channel=%d, K=%d, decoder = %s, Memory = %d, Delta = %d'%(N,T,K,decoder_mode, Memory, Delta))
-
-    # initialize data
-    channel = np.zeros((T,N)) # chanel gains
-    dataA = np.zeros((T,N)) # arrival data size
 
     init_location = [[110, np.pi/4, np.pi, 1.5], 
         [110, np.pi*3/4, 0, 0],
@@ -133,6 +93,7 @@ if __name__ == "__main__":
     
     # for iuser in users: 
     #     iuser.generate_channel_gain()
+    h = np.zeros((T, N))
     
     mem = MemoryDNN(net = [N*no_input_cnn, 256, 128, N],
                     learning_rate = 0.01,
@@ -141,7 +102,7 @@ if __name__ == "__main__":
                     memory_size=Memory)
 
     start_time=time.time()
-    mode_his = [] # store the offloading mode
+    mode_his = np.zeros((T, N))# store the offloading mode
     k_idx_his = [] # store the index of optimal offloading actor
     Q = np.zeros((T,N)) # local queue in tasks
     L = np.zeros((T,N)) # UAV queue in tasks
@@ -163,9 +124,11 @@ if __name__ == "__main__":
     drift_D = np.zeros((T))
     weighted_energy = np.zeros((T))
 
+    # idx = 0
+    # data A load from system_params 
+    Q[0,:] = dataA[0,:] # save current data queue
 
-
-    for i in range(T):
+    for i in range(1, T):
 
         if i % (T//10) == 0:
             print("%0.1f"%(i/T))
@@ -179,35 +142,20 @@ if __name__ == "__main__":
             # K = 40
 
         i_idx = i
-        K = 100
-
-
-
-        # #real-time channel generation
-        # h_tmp = racian_mec(h0,0.3)
-        # # increase h to close to 1 for better training; it is a trick widely adopted in deep learning
-        # h = h_tmp*CHFACT
-        h = dB(np.array(channel_model()))
-        # h_tmp = np.array([dB(iuser.gain_dB[i]) for iuser in users])
-        
+        K = 100 
             
-        channel[i,:] = h
-        # real-time arrival generation
-        dataA[i,:] = np.round(np.random.uniform(0, arrival_lambda*2, size=(1, N)))
-
+        h = dB(channel_gain[i, :])
 
         # 4) ‘Queueing module’ of LyDROO
-        if i_idx > 0:
-            # update queues
-            Q[i_idx,:] = np.maximum(0, Q[i_idx-1,:] - a[i_idx-1,:] - b[i_idx-1,:]) + dataA[i_idx-1,:] # current data queue
-            L[i_idx,:] = np.maximum(0, L[i_idx-1,:] - c[i_idx-1,:]) + b[i_idx-1,:]
-            D[i_idx,:] = np.maximum(0, D[i_idx-1,:] + scale_delay*delay[i_idx-1, :] - scale_delay*d_th)
+        
+        # update queues
+        Q[i_idx,:] = np.maximum(0, Q[i_idx-1,:] - a[i_idx-1,:] - b[i_idx-1,:]) + dataA[i_idx-1,:] # current data queue
+        L[i_idx,:] = np.maximum(0, L[i_idx-1,:] - c[i_idx-1,:]) + b[i_idx-1,:]
+        D[i_idx,:] = np.maximum(0, D[i_idx-1,:] + scale_delay*delay[i_idx-1, :] - scale_delay*d_th)
 
-            drift_Q[i_idx] = 1/2 *np.sum((Q[i_idx,:] - Q[i_idx - 1,:])**2)
-            drift_L[i_idx] = 1/2 *np.sum((L[i_idx,:] - L[i_idx - 1,:])**2)
-            drift_D[i_idx] = 1/2 *np.sum((D[i_idx,:] - D[i_idx - 1,:])**2)
-
-            
+        drift_Q[i_idx] = 1/2 *np.sum((Q[i_idx,:] - Q[i_idx - 1,:])**2)
+        drift_L[i_idx] = 1/2 *np.sum((L[i_idx,:] - L[i_idx - 1,:])**2)
+        drift_D[i_idx] = 1/2 *np.sum((D[i_idx,:] - D[i_idx - 1,:])**2)
 
         # scale Q and Y to 1
         # h_norm = np.linalg.norm(h)
@@ -235,11 +183,13 @@ if __name__ == "__main__":
 
 
 
-
         # 1) 'Actor module' of LyDROO
         # generate a batch of actions
-        m_list = mem.decode(nn_input, K, decoder_mode)
- 
+        if opt_mode == 'bf': 
+            m_list = gen_actions_bf(no_users=N).copy()
+        elif opt_mode == 'LYDROO': 
+            m_list = mem.decode(nn_input, K, decoder_mode)
+
         r_list = [] # all results of candidate offloading modes
         v_list = [] # the objective values of candidate offloading modes
         delay_list = []
@@ -249,35 +199,29 @@ if __name__ == "__main__":
             r_list.append(Algo1_NUM(m,h,Q[i_idx,:],L[i_idx,:],V))
             # v_list.append(r_list[-1][0])
             f_val = r_list[-1][0]
-
+            
             tmp, a_i, b_i, c_i, energy_i, energy_uav_i = r_list[-1]
 
-            # estimate the current value delay
+            # # estimate the current value delay
+            d_i_t = np.zeros(N)
             Q_i_t = np.zeros(N)
             L_i_t = np.zeros(N)
             b_i_t = np.zeros(N)
             # avarage local queue 
 
-            b_idx = np.maximum(0, i_idx - 30) 
-            # b_idx = 0
-            Q_i_t = np.mean(Q[b_idx:i_idx+1, :], axis=0) 
-            # average uav queue 
-            L_i_t = np.mean(L[b_idx:i_idx+1, :], axis=0)
-            # average arrival rate at remote queue 
-            b_i_t = np.mean(b[b_idx:i_idx+1, :], axis=0)
+            b_idx = np.maximum(0, i_idx + 1 - window_size) 
 
-            d_i_t = Q_i_t/arrival_lambda + (1 - m) * 1 + m * 2
-        
-            for iuser, bt in enumerate(b_i_t): 
-                if m[iuser] == 1 and bt != 0: 
-                    d_i_t[iuser] += L_i_t[iuser]/bt
+            
+            # if mode == 'test':
+            Q_i_t = find_mean_queue(Q[b_idx:i_idx+1, :], a_i + b_i, dataA[i_idx,:]) 
+            L_i_t = find_mean_queue(L[b_idx:i_idx+1, :], c_i, b_i)  # average uav queue          
 
-            # update the objective function
-            f_val = f_val + np.sum(1/2*(scale_delay*d_i_t)**2 + scale_delay*d_i_t*(D[i_idx,:] - scale_delay*d_th))
-
+            d_i_t = (Q_i_t +L_i_t)/lambda_param
+                
+            f_val = f_val + np.sum(1/2*(scale_delay*d_i_t)**2 + scale_delay*d_i_t*(D[i_idx,:] - scale_delay*d_th)) # update the objective function
+            
             v_list.append(f_val)
             delay_list.append(d_i_t)
-            assert(d_i_t.all() > 0.2)
             
         # record the index of largest reward
         k_idx_his.append(np.argmin(v_list))
@@ -285,41 +229,44 @@ if __name__ == "__main__":
         # 3) 'Policy update module' of LyDROO
         # encode the mode with largest reward
         mem.encode(nn_input, m_list[k_idx_his[-1]])
-        mode_his.append(m_list[k_idx_his[-1]])
+        mode_his[i_idx, :] = m_list[k_idx_his[-1]]
 
         # store max result
         # Obj[i_idx],rate[i_idx,:],energy[i_idx,:]  = r_list[k_idx_his[-1]]
         Obj[i_idx] = v_list[k_idx_his[-1]]
+
+        ###############################
         delay[i_idx] = delay_list[k_idx_his[-1]]
+
         tmp, a[i_idx,:],b[i_idx,:], c[i_idx,:], energy[i_idx, :], energy_uav[i_idx, :] = r_list[k_idx_his[-1]]
 
-        
 
         # drifted energy 
         weighted_energy[i_idx] = (np.sum(energy[i_idx, :] + energy_uav[i_idx, :]*psi))
+        is_debug_mode = True 
+        if is_debug_mode and i%100 == 0: 
+            print(f'local computation: a_i =', a[i_idx,:])
+            print(f'offloading volume: b_i =', b[i_idx,:])
+            print(f'remote computation: c_i =', c[i_idx,:])
+            print(f'remote computation: energy_i =', energy[i_idx,:])
+            print(f'delay: delay_i =', delay[i_idx])
+            print(f'virtualqueue_i =', D[i_idx,:])
+            print(f'local queue: queue_i =', Q[i_idx,:])
 
-        print(f'local computation: a_i =', a[i_idx,:])
-        print(f'offloading volume: b_i =', b[i_idx,:])
-        print(f'remote computation: c_i =', c[i_idx,:])
-        print(f'user energy: energy_i =', energy[i_idx,:])
-        print(f'uav energy: energy_u =', energy_uav[i_idx,:])
-        print(f'fvalue = {v_list[k_idx_his[-1]]}')
+            print(f'fvalue = {v_list[k_idx_his[-1]]}')
+    
+    plot_kpi_users(A=dataA, a=a, b=b, Q=Q, name=path)
+    plot_kpi_uav(L=L, b=b, c=c, name=path)
+    plot_kpi_avr(Q, L, D, energy, delay, energy_uav, path)
+    plot_kpi_drift(drift_Q, drift_L, drift_D, weighted_energy, path)
+
 
 
     total_time=time.time()-start_time
     print(f'total time = {total_time}')
     mem.plot_cost(path_name=path+'TraningLoss')
 
-    
 
-    plot_rate(Q.sum(axis=1)/N, 200, 'User queue length', name=path+'UserQueue')
-    plot_rate(L.sum(axis=1)/N, 200, 'UAV queue length', name=path+'UAVQueue')
-    plot_rate(energy.sum(axis=1)/N/delta*1000, 200, 'Power consumption (mW)', name=path+'AvgPower')
-    plot_rate(delay.sum(axis=1)/N, 200, 'Latency (TS)',name=path+'AvgDelay')
-    plot_rate(np.sum(energy_uav, axis=1)/N/delta*1000, 200, 'UAV power consumption (mW)', name=path+'AvgPowerUAV')
-    
-
-    plot_drift(drift_Q, drift_L, drift_D, weighted_energy*V, name=path+"drift")
     
     print(f"Mean drift local queue: {np.mean(drift_Q)}")
     print(f"Mean drift uav queue: {np.mean(drift_L)}")
@@ -340,12 +287,11 @@ if __name__ == "__main__":
     aUAVc = np.mean(c, axis=1)
     
     # sio.savemat('./result_%d.mat'%N, {'input_h': channel/CHFACT,'data_arrival':dataA,'local_queue':Q,'uav_queue':L,'off_mode':mode_his,'energy_consumption':energy,'delay':delay,'objective':Obj})
-    df = pd.DataFrame(
-        {'local_queue':aQ,'uav_queue':aL,                
-        'energy_user':aE_i,'energy_uav':aE_u, 
-        'delay':adelay, 'weightedE':aweightedE, 
-        'off_b': aOffloadingb, 'local_a': aLocala, 'remote_c': aUAVc})
+    df = pd.DataFrame({'local_queue':aQ,'uav_queue':aL,
+                        'energy_user':aE_i,'energy_uav':aE_u, 
+                        'delay':adelay, 'weightedE':aweightedE, 
+                        'off_b': aOffloadingb, 'local_a': aLocala, 'remote_c': aUAVc, 
+                        'time': total_time})
     name= path + 'V1.csv'
     df.to_csv(name, index=False)
-    # return quequeue_rsue, energy
     print('completed!')

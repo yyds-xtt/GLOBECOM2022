@@ -136,4 +136,6 @@ img_old/
 .vscode/
 
 img_new/
+img_old/
 *.mat 
+*.npy

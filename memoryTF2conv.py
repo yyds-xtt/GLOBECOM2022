@@ -11,6 +11,7 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 import numpy as np
+from system_params import * 
 
 from numpy.random import default_rng
 rng = default_rng()
@@ -53,9 +54,9 @@ class MemoryDNN:
     def _build_net(self):
         scaled_kn_size = 2
         self.model = keras.Sequential([
-                    layers.Conv1D(32, kn_size, activation='relu',input_shape=[int(self.net[0]/kn_size),kn_size]), # first Conv1D with 32 channels and kearnal size 3
+                    layers.Conv1D(32, kn_size, activation='relu',input_shape=[int(self.net[0]/4),kn_size]), # first Conv1D with 32 channels and kearnal size 3
                     layers.Conv1D(64, 3, activation='relu'), # second Conv1D with 32 channels and kearnal size 3
-                    layers.Conv1D(64, scaled_kn_size, activation='relu'), # second Conv1D with 32 channels and kearnal size 3
+                    layers.Conv1D(64, 2, activation='relu'), # second Conv1D with 32 channels and kearnal size 3
                     layers.Flatten(),
                     layers.Dense(64, activation='relu'),
                     layers.Dense(self.net[-1], activation='sigmoid')
@@ -90,7 +91,7 @@ class MemoryDNN:
         batch_memory = self.memory[sample_index, :]
         
         h_train = batch_memory[:, 0: self.net[0]]
-        h_train = h_train.reshape(self.batch_size,int(self.net[0]/kn_size),kn_size)
+        h_train = h_train.reshape(self.batch_size,int(self.net[0]/no_nn_inputs),no_nn_inputs)
         m_train = batch_memory[:, self.net[0]:]
         
         # print(h_train)          # (128, 10)
@@ -104,22 +105,22 @@ class MemoryDNN:
 
     def decode(self, h, k = 1, mode = 'OP'):
         # to have batch dimension when feed into tf placeholder
-        h=h.reshape(10,kn_size)
+        h = h.reshape(N, no_nn_inputs)
         h = h[np.newaxis, :]
 
         m_pred = self.model.predict(h)
         m_list = []
 
         if mode == 'OP':
-            m_list = self.knm(m_pred[0], k)
+            m_list = self.knm(m_pred[0], k).copy()
         elif mode =='KNN':
-            m_list = self.knn(m_pred[0], k)
+            m_list =  self.knn(m_pred[0], k).copy()
         elif mode =='OPN':
-            m_list = self.opn(m_pred[0], k)
+            m_list =  self.opn(m_pred[0], k).copy()
         else:
             print("The action selection must be 'OP' or 'KNN'")
-        return np.unique(m_list, axis = 0)
-        # return m_list
+        return np.unique(m_list, axis=0)
+    
     # def knm(self, m, k = 1):
     #     # return k order-preserving binary actions
     #     m_list = []
@@ -163,7 +164,7 @@ class MemoryDNN:
         
         if k > 1:
             for i in range(k-1):
-                m_list.append( np.int64(rng.uniform(low=0.0, high=1.0, size=10) < m) ) 
+                m_list.append( np.int64(rng.uniform(low=0.0, high=1.0, size=N) < m) ) 
 
         return m_list
         

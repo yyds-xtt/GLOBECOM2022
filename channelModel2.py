@@ -1,10 +1,11 @@
 import numpy as np 
+import pandas as pd 
 
 from system_params import mu_gain, sigma_gain
 from system_params import a_LOS, b_LOS
 from system_params import xi, gamma 
 from system_params import H_uav, g0 
-from system_params import N 
+from system_params import T, N 
 
 from utils import * 
 
@@ -28,3 +29,22 @@ def channel_model():
     return channel_gain
 
 # print(channel_model())
+
+def gen_channel_gain(): 
+    gain = np.zeros((T, N))
+    import itertools
+    for i, j in itertools.product(np.arange(T), np.arange(N)): 
+        gain[i, j] = channel_model().copy()
+
+    # df = pd.DataFrame
+    # ({
+    #     'dataA': gain
+    # })
+    # df.to_csv('channel_gain.csv')
+    np.save('channel_gain', gain)
+    return gain
+
+gen_channel_gain()
+
+channel_gain = np.load('channel_gain.npy')
+print("load completed")
