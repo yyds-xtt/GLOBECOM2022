@@ -1,4 +1,5 @@
 import numpy as np 
+from sklearn.preprocessing import MinMaxScaler
 
 def mega(x):
   return x*1e6
@@ -37,3 +38,18 @@ def find_mean_queue(arr1, num_1, num_2):
   num = np.maximum(0, arr1[-1, :] - num_1) + num_2
 
   return find_mean_mode(arr1, num)
+
+def preprocessing(data_in):
+    # create scaler 
+    scaler = MinMaxScaler()
+    data = np.reshape(data_in, (-1, 1))
+    # fit scaler on data 
+    scaler.fit(data)
+    normalized = scaler.transform(data)
+    normalized = normalized.reshape(1, -1)
+    return normalized 
+
+def gen_actions_bf(no_users = 5):
+  import itertools
+  actions = np.array(list(itertools.product([0, 1], repeat=no_users))) # (32, 5)
+  return actions

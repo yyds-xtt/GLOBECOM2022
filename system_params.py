@@ -3,21 +3,15 @@ from utils import *
 # System parameters
 N = 10 # number of users
 
-time = 10 # total simulation time
+duration = 1000 # total simulation duration
 delta = mini(100) 
  
-T = int(time/delta) # number of TSs
-n = T         # number of time frames
-<<<<<<< HEAD
-W = mega(1) # Bandwidth mhz
-R = kilo(1) # packet size kb
-V = 2*1e4 # Lyapunov
-=======
-W = 0.1*N*mega(1) # Bandwidth mhz
+T = int(duration/delta) # number of TSs
+n = T         # number of duration frames
+W = 0.15*N*mega(1) # Bandwidth mhz
 
-R = kilo(1) # packet size kb
-V = 5*1e5 # Lyapunov
->>>>>>> 642a114 (code 1405)
+R = 1e3 # packet size kb
+V = 1e7 # Lyapunov
 
 # channel model 
 H_uav = 50 # high of uav 
@@ -32,18 +26,18 @@ mu_gain = 0 # dB fading channel power gain
 var_gain = 4 # fading channel variance 
 sigma_gain = 2 # sqrt(var_gain)
 
-kappa = 1e-26
+kappa = 1e-27
 f_i_max = giga(0.5)
 f_u_max = giga(1.5)
 
-psi = 0.04
+psi = 0.03
 p_i_max = dBm(20)
 F = 500*R # CPU cycles / packet
 
-scale_delay = 20
-d_th = 5
+scale_delay = 15
+d_th = 8
 
-lambda_param = np.round(0.1*1e6/R)
+lambda_param = np.round(0.08*1e6/R)
 # the quantization mode could be 'OP' (Order-preserving) or 'KNN' or 'OPN' (Order-Preserving with noise)
 decoder_mode = 'OPN'
 Memory = 1024          # capacity of memory structure
@@ -56,13 +50,6 @@ DFACT = 1/3     # The factor for scaling channel value
 
 mode = 'test'
 # mode = 'ntest'
-
-######## save and load params #########
-
-dataA= np.load('dataA.npy')
-channel_gain = np.load('channel_gain.npy')
-######################################
-
 window_size = 10
 opt_mode_arr = ['LYDROO', 'bf']
 opt_mode = opt_mode_arr[0]

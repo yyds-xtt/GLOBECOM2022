@@ -57,7 +57,7 @@ def plot_kpi_avr(Q, L, D, energy, delay, energy_uav, path):
     plot_rate(D.sum(axis=1)/N, rolling_intv, 'virtual queue', name=path+'DelayQueue')
     plot_rate(energy.sum(axis=1)/N/delta*1000, rolling_intv, 'Power consumption (mW)', name=path+'AvgPower')
     plot_rate(delay.sum(axis=1)/N, rolling_intv, 'Latency (TS)',name=path+'AvgDelay')
-    plot_rate(np.sum(energy_uav, axis=1)/delta*1000, rolling_intv, 'UAV power consumption (mW)', name=path+'AvgPowerUAV')
+    plot_rate(np.sum(energy_uav, axis=1)/N/delta*1000, rolling_intv, 'UAV power consumption (mW)', name=path+'AvgPowerUAV')
     
 def plot_kpi_drift(drift_Q, drift_L, drift_D, weighted_energy, path): 
     plot_drift(drift_Q, drift_L, drift_D, weighted_energy*V, name=path+"drift")
@@ -197,9 +197,6 @@ def plot_drift(Q, L, D, E, name, rolling_intv=50):
     plt.show()
 
 
-<<<<<<< HEAD
-plot_delay()
-=======
 def plot_rate( rate_his, rolling_intv = 10, ylabel='Normalized Computation Rate', name='Average queue length'):
     import matplotlib.pyplot as plt
     import pandas as pd
@@ -292,4 +289,3 @@ def plot_comparison():
     print('load completed')
 
 # plot_comparison()
->>>>>>> 642a114 (code 1405)
